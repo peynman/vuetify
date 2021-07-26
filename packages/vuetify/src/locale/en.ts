@@ -66,4 +66,41 @@ export default {
       icon: 'Rating {0} of {1}',
     },
   },
+  crud: {
+    toolbar: {
+      settings: {
+        reload: 'Reload',
+        save: 'Save settings',
+        reset: 'Reset settings',
+        title: 'CRUD query settings',
+        hideColumns: 'Hide columns',
+        loadRelations: 'Relations to load',
+        itemsPerPage: 'Load number of items per page',
+        includeTrashed: 'Include trashed (deleted) items',
+      },
+      filters: {
+        title: 'Filter CRUD query',
+        reload: 'Reload',
+        save: 'Save filters',
+        reset: 'Reset filters',
+      },
+      actions: {
+        title: 'Available CRUD actions',
+      },
+      create: {
+        title: 'Create new CRUD resource',
+        submit: 'Submit',
+        cancel: 'Cancel',
+      },
+    },
+    pagination: {
+      total: 'Vieweing {0} of the total {1} records',
+    },
+  },
+  datePickerInput: {
+    from: 'from',
+    to: 'to',
+    ok: 'OK',
+    cancel: 'Cancel',
+  },
 }
