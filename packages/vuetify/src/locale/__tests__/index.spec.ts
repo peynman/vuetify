@@ -12,14 +12,13 @@ describe('locale.ts', () => {
     dir.forEach(filename => expect(locales[filename.replace(/\.ts$/, '').replace('-', '')]).not.toBeUndefined())
   })
 
-  // eslint-disable-next-line jest/no-commented-out-tests
-  // it('should have same structure for all translations', () => {
-  //   const unfill = (o: object) => Object.keys(o).reduce((result, key) => {
-  //     result[key] = typeof o[key] === 'object' ? unfill(o[key]) : typeof o[key]
-  //     return result
-  //   }, {})
-  //   const enUnfilled = unfill(locales.en)
+  it('should have same structure for all translations', () => {
+    const unfill = (o: object) => Object.keys(o).reduce((result, key) => {
+      result[key] = typeof o[key] === 'object' ? unfill(o[key]) : typeof o[key]
+      return result
+    }, {})
+    const enUnfilled = unfill(locales.en)
 
-  //   Object.values(locales).forEach(locale => expect(unfill(locale)).toStrictEqual(enUnfilled))
-  // })
+    Object.values(locales).forEach(locale => expect(unfill(locale)).toStrictEqual(enUnfilled))
+  })
 })
