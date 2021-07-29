@@ -2,6 +2,7 @@ import VCrudTable from './VCrudTable'
 import VCrudToolbar from './VCrudToolbar'
 import VCrudRelationsList from './VCrudRelationsList'
 import VCrudPagination from './VCrudPagination'
+import VCrudObjectPicker from './VCrudObjectPicker'
 import VCrud from './VCrud'
 import VColumnBitwiseFlags from './Columns/VColumnBitwiseFlags'
 import VColumnTimestamp from './Columns/VColumnTimestamp'
@@ -18,5 +19,6 @@ export {
   VColumnTimestamp,
   VColumnDecoratable,
   VColumnCrudObject,
+  VCrudObjectPicker,
 }
 export default VCrud

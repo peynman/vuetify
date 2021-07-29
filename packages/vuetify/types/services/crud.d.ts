@@ -2,10 +2,11 @@ import { ScehmaRendererBinding, SchemaRendererComponent } from 'types/services/s
 
 export interface CrudResource {
   name: string
+  plural: string
+  singular: string
   primaryKey: string
   columns: Array<CrudColumn>
   relations?: Array<CrudResource>
-  filtersForm?: Array<SchemaRendererComponent|string>
   exportableColumns?: Array<string>
   actions?: Array<CrudAction>
   api?: {
@@ -33,6 +34,7 @@ export interface ApiMethod {
   url: string
   permission?: string
   bindings?: ScehmaRendererBinding[]
+  autoValidate: boolean
   form?: Array<CrudFormInput>
   actions?: SchemaRendererComponent[]
 }
@@ -85,3 +87,11 @@ export interface CrudTableSettings {
   hideColumns?: Array<string>
   loadRelations?: { [key: string]: Array<string>|string }
 }
+
+export function CrudQueryLoader (
+  crud: CrudResource,
+  page: number|undefined,
+  limit: number|undefined,
+  settings: CrudTableSettings|undefined,
+  filters: { [key: string]: any }|undefined,
+): CrudQueryResult

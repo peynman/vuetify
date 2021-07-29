@@ -38,7 +38,7 @@ export default Vue.extend({
     getBindingValues (): { [key: string]: any } {
       const bindingValues: {[key: string]: any} = {}
       this.bindings?.forEach((binding: ScehmaRendererBinding) => {
-        if (this.internalBindings[binding.name]) {
+        if (this.internalBindings[binding.name] !== undefined) {
           bindingValues[binding.name] = this.internalBindings[binding.name]
         } else {
           if (['object', 'array', 'json', 'number', 'boolean'].includes(binding.type)) {

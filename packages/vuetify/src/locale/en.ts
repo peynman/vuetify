@@ -69,6 +69,7 @@ export default {
   crud: {
     toolbar: {
       settings: {
+        tooltip: 'Table settings',
         reload: 'Reload',
         save: 'Save settings',
         reset: 'Reset settings',
@@ -79,22 +80,35 @@ export default {
         includeTrashed: 'Include trashed (deleted) items',
       },
       filters: {
+        tooltip: 'Query filters',
         title: 'Filter CRUD query',
         reload: 'Reload',
         save: 'Save filters',
         reset: 'Reset filters',
       },
       actions: {
+        tooltip: 'Actions',
         title: 'Available CRUD actions',
       },
       create: {
+        tooltip: 'Create new',
         title: 'Create new CRUD resource',
         submit: 'Submit',
         cancel: 'Cancel',
+        reset: 'Reset Form',
+      },
+      reload: {
+        tooltip: 'Reload query',
+      },
+      search: {
+        tooltip: 'Search',
       },
     },
     pagination: {
       total: 'Vieweing {0} of the total {1} records',
+    },
+    picker: {
+      selectAll: 'Select all records',
     },
   },
   datePickerInput: {

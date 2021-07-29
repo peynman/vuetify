@@ -6,11 +6,25 @@ import VBtn from '../../components/VBtn'
 import VIcon from '../../components/VIcon'
 import { VNode } from 'vue/types/umd'
 import { VCard, VCardTitle, VCardText } from '../../components/VCard'
+import { VTooltip } from '../../components/VTooltip'
 
 export default Vue.extend({
   name: 'easyinteracts',
 
   methods: {
+    genTooltip (tooltip: string, activator: Function): VNode {
+      return this.$createElement(
+        VTooltip,
+        {
+          scopedSlots: {
+            activator: (props: any) => {
+              return activator(props.on, props.value)
+            },
+          },
+        },
+        tooltip,
+      )
+    },
     genActivatorCallback (onOpened: Function|null = null) {
       return {
         input: (visible: boolean) => {
@@ -37,7 +51,7 @@ export default Vue.extend({
         title,
       ])
     },
-    genIconButton (icon: string, color: string, onclick: Function, attrs: {[key: string]: any} = {}): VNode {
+    genIconButton (icon: string, color: string, onclick: Function, attrs: {[key: string]: any} = {}, events = {}): VNode {
       return this.$createElement(VBtn, {
         staticClass: 'ma-auto ' + (attrs.staticClass ? attrs.staticClass : ''),
         props: {
@@ -46,6 +60,7 @@ export default Vue.extend({
         },
         on: {
           click: onclick,
+          ...events,
         },
       }, [
         this.$createElement(VIcon, {

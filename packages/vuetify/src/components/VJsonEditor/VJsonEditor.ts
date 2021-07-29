@@ -190,7 +190,7 @@ export default baseMixins.extend<options>().extend({
         staticClass: 'd-flex flex-column flex-grow-1',
       }, children)
     },
-    genNewItem (parent: any): VNode {
+    genNewItemMenu (parent: any): VNode {
       const properties: VNode[] = []
 
       if (!Array.isArray(parent)) {
@@ -336,7 +336,7 @@ export default baseMixins.extend<options>().extend({
                       parent.push(value)
                       this.$emit('change', this.objectSchema)
                     } else {
-                      parent[this.add_name] = value
+                      this.$set(parent, this.add_name, value)
                       this.$emit('change', this.objectSchema)
                     }
                   }
@@ -357,7 +357,7 @@ export default baseMixins.extend<options>().extend({
             'mdi-plus-circle',
             'green',
             'Add new item to root',
-            [this.genNewItem(this.objectSchema)],
+            [this.genNewItemMenu(this.objectSchema)],
             null,
             {
               'close-on-content-click': false,
@@ -606,7 +606,7 @@ export default baseMixins.extend<options>().extend({
                       },
                     },
                     [
-                      e.item.type === 'array' ? 'Array (' + e.item.children.length + ')' : (e.item.type === 'object' ? 'Object' : 'Null'),
+                      e.item.type === 'array' ? 'Array (' + e.item.children.length + ')' : (e.item.type === 'object' && e.item.children?.length > 0 ? 'Object' : 'Null'),
                     ]
                   )
                 )
@@ -624,7 +624,7 @@ export default baseMixins.extend<options>().extend({
                     'mdi-plus-circle',
                     'green',
                     'Add new item',
-                    [this.genNewItem(e.item.ref)],
+                    [this.genNewItemMenu(e.item.ref)],
                     null,
                     {
                       'close-on-content-click': false,
@@ -649,8 +649,9 @@ export default baseMixins.extend<options>().extend({
                       e.item.parentRef.splice(e.item.parentRef.indexOf(e.item.ref), 1)
                       this.$emit('change', this.objectSchema)
                     } else {
-                      e.item.parentRef[e.item.label] = undefined
+                      this.$set(e.item.parentRef, e.item.label, undefined)
                       this.$emit('change', this.objectSchema)
+                      this.$forceUpdate()
                     }
                   }),
                   null,

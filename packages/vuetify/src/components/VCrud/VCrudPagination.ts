@@ -5,6 +5,7 @@ import CrudConsumer from './CrudConsumer'
 
 import { VNode } from 'vue/types/umd'
 import { VPagination } from '../VPagination'
+import { VCard } from '../VCard'
 
 const baseMixins = mixins(
   CrudConsumer,
@@ -62,9 +63,12 @@ export default baseMixins.extend<options>().extend({
         ))
       }
       return this.$createElement(
-        'div',
+        VCard,
         {
-          staticClass: 'mt-1 d-flex flex-column align-center justify-center',
+          staticClass: 'd-flex flex-column align-center justify-center',
+          props: {
+            flat: this.flat,
+          },
         },
         elements
       )

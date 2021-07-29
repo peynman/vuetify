@@ -93,6 +93,7 @@ export default Vue.extend({
                   filled: this.filled,
                   flat: this.flat,
                   fullWidth: this.fullWidth,
+                  label: this.label,
                   ...activator.attrs,
                   value: this.datesValue?.join('~'),
                 },

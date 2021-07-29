@@ -94,7 +94,7 @@ export default baseMixins.extend<options>().extend({
       return null
     },
     showItemsPerPage (): number {
-      return this.settings.perPage?.valueOf() ?? this.itemsPerPage.valueOf()
+      return this.settings?.perPage?.valueOf() ?? this.itemsPerPage.valueOf()
     },
     showItemSelectable (): Boolean {
       return this.showSelect === true || (this.showSelect === 'auto' && this.showActionsSelect)
@@ -132,6 +132,8 @@ export default baseMixins.extend<options>().extend({
                 settings,
                 filters
               )
+            },
+            search: (crud: CrudResource, searchTerm: string, settings: CrudTableSettings, filters: Object) => {
             },
             'actions-opened': (crud: CrudResource) => {
               this.showActionsSelect = true
@@ -199,6 +201,7 @@ export default baseMixins.extend<options>().extend({
       return this.$createElement(
         VCrudPagination,
         {
+          staticClass: 'mt-1',
           props: {
             loading: this.loading,
             flat: this.flat,

@@ -3,7 +3,7 @@ import mixins, { ExtractVue } from '../../../util/mixins'
 
 import Themeable from '../../../mixins/themeable'
 import VChip from '../../VChip'
-import Decoratable from '../util/decoratable'
+import Decoratable from '../../../mixins/decoratable'
 
 const baseMixins = mixins(
   Themeable,
