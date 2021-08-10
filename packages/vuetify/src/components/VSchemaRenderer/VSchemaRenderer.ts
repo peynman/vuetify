@@ -1,0 +1,408 @@
+import Vue, { VNode } from 'vue'
+import { PropType, PropValidator } from 'vue/types/options'
+import { SchemaRendererComponent, EventActionType, EventActionDetails, ScehmaRendererBinding } from 'types/services/schemas'
+import { cloneObjectWithParent } from '../../util/helpers'
+import * as AvailableEvents from '../VSchemaBuilder/properties/Events'
+import { ScopedSlot } from 'vue/types/vnode'
+import { consoleError } from '../../util/console'
+import VSchemaBuilderAppend from '../VSchemaBuilder/VSchemaBuilderAppend'
+
+export default Vue.extend({
+  name: 'v-schema-renderer',
+
+  inheritAttrs: false,
+
+  props: {
+    schema: {
+      type: Object,
+      default: () => ({}),
+    } as PropValidator<Partial<SchemaRendererComponent>>,
+    bindings: {
+      type: Array as PropType<Array<ScehmaRendererBinding>>,
+      default: () => ([]),
+    },
+    editorMode: {
+      type: Boolean,
+      default: false,
+    },
+  },
+
+  data () {
+    return {
+      internalBindings: {} as { [key: string]: any },
+      editableItems: {} as { [key: string]: any },
+    }
+  },
+
+  methods: {
+    getBindingValues (): { [key: string]: any } {
+      const bindingValues: {[key: string]: any} = {}
+      this.bindings?.forEach((binding: ScehmaRendererBinding) => {
+        if (this.internalBindings[binding.name] !== undefined) {
+          bindingValues[binding.name] = this.internalBindings[binding.name]
+        } else {
+          if (['object', 'array', 'json', 'number', 'boolean'].includes(binding.type)) {
+            try {
+              const defaultValue = binding.default === null ? null : JSON.parse(binding.default)
+              bindingValues[binding.name] = defaultValue
+            } catch (error) {
+              consoleError(error)
+            }
+          } else {
+            bindingValues[binding.name] = binding.default
+          }
+        }
+      })
+
+      return bindingValues
+    },
+    // schema renderer agent methods
+    setBindingValue (key: string, value: any, recursive: boolean): void {
+      let bindingRefKey = key
+      if (key.startsWith('$')) {
+        if (key.startsWith('$(') && key.endsWith(')')) {
+          bindingRefKey = key.substr(2, key.length - 3)
+        } else {
+          bindingRefKey = key.substr(2)
+        }
+      }
+
+      const parts = bindingRefKey.split('.')
+      let ref: any = this.internalBindings
+
+      if (parts.length > 1) {
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i]
+          if (part === 'bindings' && i === 0) {
+            continue
+          }
+
+          if (ref && ref[part]) {
+            ref = ref[part]
+          } else if (recursive) {
+            ref[part] = {}
+            ref = ref[part]
+          }
+        }
+        if (ref) {
+          this.$set(ref, parts[parts.length - 1], value)
+        }
+      } else {
+        this.$set(ref, key, value)
+      }
+
+      this.$emit('input', this, this.getBindingValues())
+    },
+    getBindingValue (expression: string, args: Array<any>): any {
+      let expressionBinding = expression
+      if (!expression.startsWith('$')) {
+        expressionBinding = '$(' + expression + ')'
+      }
+      return this.evalBinding(expressionBinding, this.getBindingValues(), args)
+    },
+    evalBinding (
+      evalValue: any,
+      bindings: { [key: string]: any} = {},
+      args: Array<any> = []): any {
+      if (typeof evalValue === 'string' && evalValue.startsWith('$')) {
+        if (evalValue.startsWith('$(') && evalValue.endsWith(')')) {
+          try {
+            // eslint-disable-next-line no-eval
+            return eval(evalValue.substr(2, evalValue.length - 3))
+          } catch (error) {
+            consoleError(error)
+          }
+        } else {
+          return bindings[evalValue.substr(1)]
+        }
+      } else {
+        return evalValue
+      }
+    },
+    genComponentScopedSlots (desc: SchemaRendererComponent, index: number|null, argsBindings: Array<any> = []) {
+      const scopedSlots: { [key: string]: ScopedSlot|undefined } = {}
+      if (Array.isArray(desc.children) && desc.children.length > 0) {
+        const scopedGroups: { [key: string]: SchemaRendererComponent[] } = {}
+        desc.children
+          .filter(this.getFilterFunction())
+          .sort(this.getSortFunction())
+          .forEach((c: SchemaRendererComponent) => {
+            if (
+              c.slotDetails !== undefined &&
+              c.slotDetails !== null &&
+              c.slotDetails !== 'default' &&
+              typeof c.slotDetails === 'object') {
+              const namedSlot = c.slotDetails as any
+              if (namedSlot.scoped) {
+                const slotName = namedSlot.slot.replace('<name>', namedSlot.name)
+                if (!scopedGroups[slotName]) {
+                  scopedGroups[slotName] = []
+                }
+                scopedGroups[slotName].push(c)
+              }
+            }
+          })
+
+        Object.entries(scopedGroups).forEach((entry: any[]) => {
+          const slotName: string = entry[0]
+          const slotRenderables: SchemaRendererComponent[] = entry[1]
+          scopedSlots[slotName] = (...slotInputBindings: any) => {
+            return slotRenderables.map((c: SchemaRendererComponent) => this.genComponent(c, slotInputBindings))
+              .reduce((acc, val) => acc.concat(val), [])
+          }
+        })
+      }
+      return scopedSlots
+    },
+    evaluateComponentModel (
+      props: { [key: string]: any },
+      on: { [key: string]: any },
+      desc: SchemaRendererComponent,
+      index: number|null,
+      argsBindings: Array<any> = []) {
+      if (desc['v-model'] !== undefined) {
+        const modelBinding: string = desc['v-model']
+        const vModelEventName = desc['v-model-event'] ?? 'input'
+        const vModelPropertyName = desc['v-model-property-name'] ?? 'value'
+        const alreadyExistingEvents = on[vModelEventName]
+        on[vModelEventName] = (val: any) => {
+          this.setBindingValue(modelBinding, val, true)
+          if (alreadyExistingEvents) {
+            alreadyExistingEvents(val)
+          }
+        }
+        props[vModelPropertyName] = this.getBindingValue(modelBinding, argsBindings)
+      }
+    },
+    evaluateComponentPropsAndEvents (
+      clone: SchemaRendererComponent,
+      props: { [key: string]: any },
+      on: { [key: string]: any },
+      desc: SchemaRendererComponent,
+      index: number|null,
+      argsBindings: Array<any> = []) {
+      // evaluate bindings
+      Object.entries(clone).forEach((entry: any[]) => {
+        const prop: string = entry[0]
+        const propValue = entry[1]
+
+        if (prop === 'on') {
+          const AvailableEventsRefs: EventActionDetails[] = Object.entries(AvailableEvents).map((avE: any) => avE[1].default)
+          Object.entries(propValue).forEach((eventEntry: any[]) => {
+            const eventName = eventEntry[0]
+            const events = eventEntry[1]
+
+            if (Array.isArray(events)) {
+              on[eventName] = (...args: any) => {
+                events.forEach((event: EventActionType) => {
+                  const action = AvailableEventsRefs.find((
+                    avEvent: EventActionDetails) => (avEvent.name === event.action)
+                  )
+                  if (action != null) {
+                    action.onFireAction(this, clone, event, args, argsBindings)
+                  }
+                })
+              }
+            } else if (typeof events === 'function') {
+              on[eventName] = (...args: any) => {
+                events(this, ...args)
+              }
+            }
+          })
+        } else if (prop === 'props') {
+          Object.entries(propValue).forEach((propEntry: any[]) => {
+            const propName = propEntry[0]
+            const propItemValue = propEntry[1]
+            props[propName] = this.evalBinding(propItemValue, this.getBindingValues(), argsBindings)
+          })
+        } else {
+          clone[prop] = this.evalBinding(propValue, this.getBindingValues(), argsBindings)
+        }
+      })
+    },
+    genComponentPropsClone (desc: SchemaRendererComponent, index: number|null, argsBindings: Array<any> = []): SchemaRendererComponent {
+      const clone: SchemaRendererComponent = cloneObjectWithParent(desc, null)
+
+      if (desc.dontEvalBindings === true) {
+        return clone
+      }
+
+      const on: {[key: string]: Function} = {}
+      const props: {[key: string]: any} = {}
+
+      this.evaluateComponentPropsAndEvents(clone, props, on, desc, index, argsBindings)
+      this.evaluateComponentModel(props, on, desc, index, argsBindings)
+
+      clone.on = on
+      clone.props = props
+      clone.scopedSlots = this.genComponentScopedSlots(desc, index, argsBindings)
+
+      if (clone.hidden) {
+        clone.show = false
+      }
+
+      return clone
+    },
+    genComponentChildren (desc: SchemaRendererComponent, argsBindings: any = null): VNode[] {
+      const children: any[] = []
+
+      if (desc.children) {
+        if (typeof desc.children === 'string') {
+          children.push(desc.children)
+        } else if (Array.isArray(desc.children) && desc.children.length > 0) {
+          desc.children
+            .filter(this.getFilterFunction())
+            .sort(this.getSortFunction())
+            .forEach(c => {
+              if (!c.slotDetails || c.slotDetails === 'default') {
+                children.push(...this.genComponent(c, argsBindings))
+              } else if (typeof c.slotDetails === 'object') {
+                const detailedSlot: any = c.slotDetails
+                if (!detailedSlot.scoped) {
+                  children.push(this.$createElement('template', { slot: detailedSlot.slot }, this.genComponent(c, argsBindings)))
+                }
+              }
+            })
+        }
+      }
+
+      return children
+    },
+    genComponent (desc: SchemaRendererComponent, argsBindings: Array<any> = []): VNode[] {
+      let cloned: VNode[] = []
+
+      if (desc['v-for']) {
+        const vfor = this.evalBinding(desc['v-for'], this.getBindingValues(), argsBindings)
+        if (vfor && Array.isArray(vfor)) {
+          vfor.forEach((vforBind: any, index: number) => {
+            const vforArgsBindings = [vforBind, ...argsBindings]
+            const cloneProps = this.genComponentPropsClone(desc, index, vforArgsBindings)
+            const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
+            cloned.push(this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, vforArgsBindings)))
+          })
+        }
+      } else {
+        const cloneProps = this.genComponentPropsClone(desc, null, argsBindings)
+        const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
+        const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, argsBindings))
+        cloned.push(clone)
+      }
+
+      if (desc.wrap) {
+        cloned = [this.$createElement(
+          desc.wrap,
+          {
+            staticClass: desc.wrapClass ?? '',
+            attrs: (desc.wrapAttributes ?? {}),
+          },
+          cloned
+        )]
+      }
+
+      if (this.editorMode) {
+        return [this.genEditableComponent(desc, cloned)]
+      }
+
+      return cloned
+    },
+    genRootComponent (desc: SchemaRendererComponent, argsBindings: Array<any> = []): VNode {
+      const cloneProps = this.genComponentPropsClone(desc, null, argsBindings)
+      const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
+      const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, argsBindings))
+
+      if (desc.wrap) {
+        return this.$createElement(
+          desc.wrap,
+          {
+            staticClass: desc.wrapClass ?? '',
+            attrs: (desc.wrapAttributes ?? {}),
+          },
+          [clone]
+        )
+      }
+
+      return clone
+    },
+    genEditableComponent (desc: SchemaRendererComponent, cloned: VNode[]): VNode {
+      return this.$createElement(
+        'section',
+        {
+          staticStyle: {
+            display: 'contents',
+          },
+          on: {
+            mouseover: () => {
+              if (desc.id) {
+                this.editableItems[desc.id] = true
+                this.$forceUpdate()
+              }
+            },
+            mouseleave: () => {
+              if (desc.id) {
+                this.editableItems[desc.id] = false
+                this.$forceUpdate()
+              }
+            },
+          },
+        },
+        [
+          this.$createElement(
+            VSchemaBuilderAppend,
+            {
+              staticStyle: {
+                position: 'absolute',
+                'z-index': 1,
+                display: desc.id && this.editableItems[desc.id] ? 'inline !important' : 'none !important',
+              },
+              props: {
+                item: desc,
+              },
+              on: {
+                'move-first': (item: SchemaRendererComponent) => {
+                  this.$emit('move-first', item)
+                },
+                'move-last': (item: SchemaRendererComponent) => {
+                  this.$emit('move-last', item)
+                },
+                'move-up': (item: SchemaRendererComponent) => {
+                  this.$emit('move-up', item)
+                },
+                'move-down': (item: SchemaRendererComponent) => {
+                  this.$emit('move-down', item)
+                },
+                'change-props': (item: SchemaRendererComponent, props: {[key: string]: any}) => {
+                  this.$emit('change-props', item, props)
+                },
+                'change-attributes': (item: SchemaRendererComponent, attributes: {[key: string]: any}) => {
+                  this.$emit('change-attributes', item, attributes)
+                },
+                'change-events': (item: SchemaRendererComponent, events: {[key: string]: any}) => {
+                  this.$emit('change-events', item, events)
+                },
+                'change-slots': (item: SchemaRendererComponent, slots: { [key: string]: any }) => {
+                  this.$emit('change-slots', item, slots)
+                },
+                'add-child': (item: SchemaRendererComponent, tags: Array<string>) => {
+                  this.$emit('add-child', item, tags)
+                },
+                'remove-item': (item: SchemaRendererComponent) => {
+                  this.$emit('move-first', item)
+                },
+              },
+            }
+          ),
+          ...cloned,
+        ]
+      )
+    },
+    getSortFunction () {
+      return (a: any, b: any) => a.priority - b.priority
+    },
+    getFilterFunction () {
+      return (f: any) => f.hidden !== true
+    },
+  },
+  render (h): VNode {
+    return this.genRootComponent(this.schema)
+  },
+})

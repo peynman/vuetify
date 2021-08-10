@@ -490,3 +490,88 @@ export function mergeDeep (
 export function fillArray<T> (length: number, obj: T) {
   return Array(length).fill(obj)
 }
+
+export function makeRandomId (length: number) {
+  const result = []
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const charactersLength = characters.length
+  for (let i = 0; i < length; i++) {
+    result.push(characters.charAt(Math.floor(Math.random() * charactersLength)))
+  }
+  return result.join('')
+}
+
+export function cloneObjectWithParentRemove (target: any, parentKey = 'parent'): any {
+  if (target === null) {
+    return null
+  }
+
+  if (Array.isArray(target)) {
+    return target.map((a: any) => cloneObjectWithParentRemove(a, parentKey))
+  }
+
+  if (isObject(target)) {
+    const clone: {[key: string]: any} = {}
+    Object.entries(target).forEach((entry: any[]) => {
+      const prop = entry[0]
+      if (prop !== parentKey) {
+        clone[prop] = cloneObjectWithParentRemove(entry[1], parentKey)
+      } else {
+        clone[prop] = null
+      }
+    })
+    return clone
+  }
+
+  return target
+}
+
+export function cloneObjectWithParentCalculate (target: any, parent: any, parentKey = 'parent'): any {
+  if (target === null) {
+    return null
+  }
+
+  if (Array.isArray(target)) {
+    return target.map((a: any) => cloneObjectWithParentCalculate(a, parent, parentKey))
+  }
+
+  if (isObject(target)) {
+    const clone: {[key: string]: any} = {}
+    Object.entries(target).forEach((entry: any[]) => {
+      const prop = entry[0]
+      if (prop !== parentKey) {
+        clone[prop] = cloneObjectWithParentCalculate(entry[1], clone, parentKey)
+      } else {
+        clone[prop] = parent
+      }
+    })
+    return clone
+  }
+
+  return target
+}
+
+export function cloneObjectWithParent (target: any, parent: any, parentKey = 'parent'): any {
+  if (target === null) {
+    return null
+  }
+
+  if (Array.isArray(target)) {
+    return target.map((a: any) => cloneObjectWithParent(a, parent, parentKey))
+  }
+
+  if (isObject(target)) {
+    const clone: {[key: string]: any} = {}
+    Object.entries(target).forEach((entry: any[]) => {
+      const prop = entry[0]
+      if (prop !== parentKey) {
+        clone[prop] = cloneObjectWithParent(entry[1], parent, parentKey)
+      } else {
+        clone[parentKey] = entry[1]
+      }
+    })
+    return clone
+  }
+
+  return target
+}
