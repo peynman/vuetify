@@ -112,8 +112,9 @@ export default {
     },
   },
   datePickerInput: {
-    from: 'from',
-    to: 'to',
+    input: 'From {0} to {1}',
+    startTime: 'Start time',
+    endTime: 'End time',
     ok: 'OK',
     cancel: 'Cancel',
   },

@@ -38,8 +38,8 @@ export default baseMixins.extend<options>().extend({
 
   props: {
     items: {
-      type: Function as PropType<ItemsFetchCallback> | Array<any>,
-      default: () => ([]),
+      type: Function as PropType<ItemsFetchCallback> | Array<any> | undefined,
+      default: undefined,
     },
     userData: {
       type: Object as PropType<any> | undefined,
@@ -237,8 +237,8 @@ export default baseMixins.extend<options>().extend({
             this.loading = false
           })
         } else if (Array.isArray(this.items)) {
-          this.currPageItems = this.items
-          this.total = this.items.length
+          this.currPageItems = this.items as Array<any>
+          this.total = this.currPageItems.length ?? 0
           this.currPage = 1
         }
       }
