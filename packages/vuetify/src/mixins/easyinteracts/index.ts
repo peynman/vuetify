@@ -16,9 +16,12 @@ export default Vue.extend({
       return this.$createElement(
         VTooltip,
         {
+<<<<<<< HEAD
           props: {
             top: true,
           },
+=======
+>>>>>>> 006e8cd81dd02c0fbd68e575adf857087bd90c08
           scopedSlots: {
             activator: (props: any) => {
               return activator(props.on, props.value)
