@@ -82,9 +82,5 @@ export * from './VSchemaBuilder'
 export * from './VParagraph'
 export * from './VJsonEditor'
 export * from './VCrud'
-<<<<<<< HEAD
 export * from './VTimestampInput'
-=======
-export * from './VDatePickerInput'
->>>>>>> 006e8cd81dd02c0fbd68e575adf857087bd90c08
 export * from './transitions'

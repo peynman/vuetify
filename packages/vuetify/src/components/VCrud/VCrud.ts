@@ -38,13 +38,8 @@ export default baseMixins.extend<options>().extend({
 
   props: {
     items: {
-<<<<<<< HEAD
       type: Function as PropType<ItemsFetchCallback> | Array<any> | undefined,
       default: undefined,
-=======
-      type: Function as PropType<ItemsFetchCallback> | Array<any>,
-      default: () => ([]),
->>>>>>> 006e8cd81dd02c0fbd68e575adf857087bd90c08
     },
     userData: {
       type: Object as PropType<any> | undefined,
