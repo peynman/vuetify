@@ -22,7 +22,9 @@ import { VCheckbox } from '../VCheckbox'
 import VCrudRelationsList from './VCrudRelationsList'
 import { VTab, VTabs, VTabsSlider } from '../VTabs'
 import VSchemaRenderer from '../VSchemaRenderer'
-import { ScehmaRendererBinding, SchemaRendererAgent, SchemaRendererComponent } from 'types/services/schemas'
+import { SchemaRendererBinding, SchemaRendererAgent, SchemaRendererComponent } from 'types/services/schemas'
+import { getNestedObjectValue } from './util/helpers'
+import VCrudApiForm from './VCrudApiForm'
 
 const baseMixins = mixins(
   EasyInteracts,
@@ -104,7 +106,6 @@ export default baseMixins.extend<options>().extend({
     return {
       toolbarMode: 'default',
       searchTerm: '',
-      settingsForm: { ...this.valueSettings } as CrudTableSettings,
       expandMode: '',
       settingsDialog: false,
       filtersDialog: false,
@@ -113,9 +114,8 @@ export default baseMixins.extend<options>().extend({
       savingFilters: false,
       actionsTab: 0,
       actionFormValue: {} as { [key: string]: any },
-      createValidation: true,
-      createFormValue: {} as { [key: string]: any },
       filtersFormValue: { ...this.valueFilters } as { [key: string]: any },
+      settingsForm: { ...this.valueSettings } as CrudTableSettings,
     }
   },
 
@@ -148,120 +148,30 @@ export default baseMixins.extend<options>().extend({
       return (this.crudResource?.api?.query?.form?.length ?? 0) > 0 && this.showFilters !== false
     },
     itemsPerPageOptions (): Object[] {
-      return [
-        {
-          text: '5',
-          value: 5,
-        },
-        {
-          text: '10',
-          value: 10,
-        },
-        {
-          text: '15',
-          value: 15,
-        },
-        {
-          text: '30',
-          value: 30,
-        },
-        {
-          text: '50',
-          value: 50,
-        },
-        {
-          text: '100',
-          value: 100,
-        },
-      ]
+      return [5, 10, 15, 30, 50, 100].map(n => ({
+        text: n.toString(),
+        value: n,
+      }))
     },
     isSearchMode (): Boolean {
       return this.toolbarMode === 'search'
     },
     extendedActions (): CrudAction[] {
-      return this.crudResource?.actions?.filter((act: CrudAction) =>
-        act.batched && (
-          !this.crudUser || this.crudUser?.hasAccessToApiMethod(act.api)
-        )) ?? []
+      return Object.keys(this.crudResource?.actions ?? {}).filter((name: string) => {
+        return this.crudResource?.actions?.[name].batched && (
+          !this.crudUser || this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api)
+        )
+      })
+        .map((name: string) => (this.crudResource?.actions?.[name])) as CrudAction[]
     },
-    extendedActionCurrent (): CrudAction|undefined {
-      return this.extendedActions[this.actionsTab]
+    currentExtendedAction (): CrudAction|undefined {
+      return this.crudResource?.actions?.[this.currentExtendedActionName]
     },
-    extendedActionFormValueDefault (): { [key: string]: any } {
-      const act = this.extendedActionCurrent
-      return act?.api?.form?.reduce<Object>((obj: { [key: string]: any }, input: CrudFormInput) => {
-        obj[input.key] = null
-        return obj
-      }, {}) ?? {}
-    },
-    extendedActionFormValue (): { [key: string]: any } {
-      const act = this.extendedActionCurrent
-      const values: { [key: string]: any } = { ...this.actionFormValue }
-      if (act?.batchKey) {
-        values[act.batchKey] = this.valueSelections.map((item: any) => {
-          return item[act.batchItemPrimaryKey ?? 'id']
-        })
-      }
-      return values
-    },
-    extendedActionBindings (): ScehmaRendererBinding[] {
-      const act = this.extendedActions[this.actionsTab]
-      const actionFormValue = this.extendedActionFormValue
-      const bindings = Object.entries(actionFormValue)
-        .map<ScehmaRendererBinding>((entry: any[]) => this.getSchemaRendererBindingFromValue(entry[0], entry[1]))
-      if (act?.api?.bindings) {
-        bindings.push(...act.api.bindings)
-      }
-      return bindings
-    },
-    createBindings (): ScehmaRendererBinding[] {
-      const bindings = []
-      if (this.crudResource?.api?.create?.autoValidate) {
-        bindings.push({
-          name: 'valid',
-          type: 'bool',
-          default: this.createFormValue.valid !== undefined ? this.createFormValue.valid : true,
-        })
-      }
-      if (this.crudResource?.api?.create?.bindings) {
-        bindings.push(...this.crudResource.api.create.bindings)
-      }
-      if (this.crudResource?.api?.create?.form) {
-        this.crudResource?.api?.create?.form.forEach((input: CrudFormInput) => {
-          bindings.push(this.getSchemaRendererBindingFromValue(input.key, this.createFormValue[input.key]))
-        })
-      }
-      return bindings
-    },
-    filtersBindings (): ScehmaRendererBinding[] {
-      const bindings = []
-      if (this.crudResource?.api?.query?.autoValidate) {
-        bindings.push({
-          name: 'valid',
-          type: 'bool',
-          default: this.filtersFormValue.valid !== undefined ? this.filtersFormValue.valid : true,
-        })
-      }
-      if (this.crudResource?.api?.query?.bindings) {
-        bindings.push(...this.crudResource.api.query.bindings)
-      }
-      if (this.crudResource?.api?.query?.form) {
-        this.crudResource?.api?.query?.form.forEach((input: CrudFormInput) => {
-          bindings.push(this.getSchemaRendererBindingFromValue(input.key, this.filtersFormValue[input.key]))
-        })
-      }
-      return bindings
+    currentExtendedActionName (): string {
+      return Object.keys(this.crudResource?.actions ?? {})[this.actionsTab]
     },
   },
   methods: {
-    getSchemaRendererBindingFromValue (name: string, value: any): ScehmaRendererBinding {
-      return {
-        name,
-        type: typeof value === 'object' || value === undefined || value === null ? 'default'
-          : typeof value === 'string' ? 'string' : 'json',
-        default: value,
-      }
-    },
     genDialog (activator: Function, visible: boolean, onVisibleChanged: Function, content: VNode[]): VNode {
       return this.$createElement(
         VDialog,
@@ -288,210 +198,92 @@ export default baseMixins.extend<options>().extend({
         content
       )
     },
-    genFormCard (title: string, content: VNode[], actions: VNode[]): VNode[] {
-      return [
-        this.$createElement(
-          VCard,
-          {
-          },
-          [
-            this.$createElement(
-              VCardTitle,
-              {},
-              title,
-            ),
-            this.$createElement(
-              VDivider,
-              {}
-            ),
-            this.$createElement(
-              VCardText,
-              {
-                staticClass: 'mt-5',
-              },
-              content,
-            ),
-            this.$createElement(
-              VDivider,
-              {}
-            ),
-            this.$createElement(
-              VCardActions,
-              {},
-              actions,
-            ),
-          ]
-        ),
-      ]
-    },
-    getCreateFormComponents (): SchemaRendererComponent[] {
-      return this.crudResource?.api?.create?.form?.map<SchemaRendererComponent>((input: CrudFormInput) => {
-        return {
-          id: this.id + '_create_' + input.key,
-          ...(input.component ?? {}),
-          'v-model': 'bindings.' + input.key,
-        }
-      }) ?? []
-    },
-    getCreateFormActionButtons (): SchemaRendererComponent[] {
-      return [
+    genFormCard (title: string, content: VNode[], actions: VNode[]): VNode {
+      return this.$createElement(
+        VCard,
         {
-          tag: 'VBtn',
-          props: {
-            color: 'warning',
-          },
-          on: {
-            click: () => {
-              this.createFormValue = {}
-              this.$forceUpdate()
-            },
-          },
-          children: this.$vuetify.lang.t('$vuetify.crud.toolbar.create.reset'),
         },
-        {
-          tag: 'VSpacer',
-        },
-        ...(this.crudResource?.api?.create?.actions ?? []),
-      ]
-    },
-    genCreateForm (): VNode[] {
-      return this.genFormCard(
-        this.$vuetify.lang.t('$vuetify.crud.toolbar.create.title'),
         [
           this.$createElement(
-            VSchemaRenderer,
-            {
-              props: {
-                bindings: this.createBindings,
-                schema: {
-                  tag: this.crudResource?.api?.create?.autoValidate ? 'VForm' : 'div',
-                  staticClass: 'd-flex flex-column',
-                  'v-model': '$(bindings.valid)',
-                  children: this.getCreateFormComponents(),
-                },
-              },
-              on: {
-                input: (renderer: SchemaRendererAgent, bindings: { [key: string]: any }) => {
-                  this.createFormValue = bindings
-                },
-              },
-            }
+            VCardTitle,
+            {},
+            title,
           ),
-        ],
-        [
           this.$createElement(
-            VSchemaRenderer,
+            VDivider,
+            {}
+          ),
+          this.$createElement(
+            VCardText,
             {
-              props: {
-                bindings: this.createBindings,
-                schema: {
-                  tag: 'VRow',
-                  props: {
-                    noGutters: true,
-                  },
-                  children: this.getCreateFormActionButtons(),
-                },
-              },
+              staticClass: 'mt-5',
             },
-          ),
-        ])
-    },
-    getFiltersFormComponents (): SchemaRendererComponent[] {
-      return this.crudResource?.api?.query?.form?.map<SchemaRendererComponent>((input: CrudFormInput) => {
-        return {
-          id: this.id + '_query_' + input.key,
-          ...(input.component ?? {}),
-          'v-model': 'bindings.' + input.key,
-        }
-      }) ?? []
-    },
-    genFiltersForm (): VNode[] {
-      return this.genFormCard(
-        this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.title'),
-        [
-          this.$createElement(
-            VSchemaRenderer,
-            {
-              props: {
-                bindings: this.filtersBindings,
-                schema: {
-                  tag: this.crudResource?.api?.query?.autoValidate ? 'VForm' : 'div',
-                  staticClass: 'd-flex flex-column',
-                  children: this.getFiltersFormComponents(),
-                },
-              },
-              on: {
-                input: (renderer: SchemaRendererAgent, bindings: { [key: string]: any }) => {
-                  this.filtersFormValue = bindings
-                },
-              },
-            }
-          ),
-        ],
-        [
-          this.$createElement(
-            VBtn,
-            {
-              props: {
-                color: 'secondary',
-                dense: true,
-                dark: true,
-                loading: this.savingFilters,
-                disabled: !this.filtersFormValue.valid,
-              },
-              on: {
-                click: () => {
-                  this.savingFilters = true
-                  this.$emit('save-settings', this.crudResource, this.filtersFormValue, () => {
-                    this.filtersDialog = false
-                    this.savingFilters = false
-                    this.expandMode = ''
-                  })
-                },
-              },
-            },
-            this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.save'),
+            content,
           ),
           this.$createElement(
-            VBtn,
-            {
-              props: {
-                color: 'secondary',
-                dense: true,
-                dark: true,
-              },
-              on: {
-                click: () => {
-                  this.filtersDialog = false
-                  this.expandMode = ''
-                  this.$emit('reset-filters', this.crudResource)
-                },
-              },
-            },
-            this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.reset'),
+            VDivider,
+            {}
           ),
           this.$createElement(
-            VBtn,
-            {
-              props: {
-                color: 'primary',
-                dense: true,
-                dark: true,
-              },
-              on: {
-                click: () => {
-                  this.filtersDialog = false
-                  this.expandMode = ''
-                  this.$emit('change-filters', this.crudResource, this.filtersFormValue)
-                },
-              },
-            },
-            this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.reload'),
+            VCardActions,
+            {},
+            actions,
           ),
         ]
       )
     },
-    genSettingsForm (): VNode[] {
+    genCreateForm (): VNode {
+      return this.$createElement(
+        VCrudApiForm,
+        {
+          props: {
+            title: this.$vuetify.lang.t('$vuetify.crud.toolbar.create.title'),
+            crud: this.crudResource,
+            api: 'create',
+            crudUser: this.crudUser,
+          },
+        }
+      )
+    },
+    genFiltersForm (): VNode[] {
+      return [
+        this.$createElement(
+          VCrudApiForm,
+          {
+            props: {
+              title: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.title'),
+              crud: this.crudResource,
+              crudUser: this.crudUser,
+              api: 'query',
+              extraActions: [
+                {
+                  tag: 'VBtn',
+                  props: {
+                    color: 'secondary',
+                    dense: true,
+                    dark: true,
+                    loading: this.savingFilters,
+                    disabled: !this.filtersFormValue.valid,
+                  },
+                  on: {
+                    click: () => {
+                      this.savingFilters = true
+                      this.$emit('save-settings', this.crudResource, this.filtersFormValue, () => {
+                        this.filtersDialog = false
+                        this.savingFilters = false
+                        this.expandMode = ''
+                      })
+                    },
+                  },
+                  children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.save'),
+                },
+              ],
+            },
+          },
+        ),
+      ]
+    },
+    genSettingsForm (): VNode {
       return this.genFormCard(this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.title'), [
         this.$createElement(
           VSelect,
@@ -649,71 +441,18 @@ export default baseMixins.extend<options>().extend({
         ),
       ])
     },
-    getExtendedActionComponents (): SchemaRendererComponent[] {
-      return this.extendedActions[this.actionsTab]?.api?.form?.map<SchemaRendererComponent>((input: CrudFormInput) => {
-        return {
-          id: this.id + '_action_' + this.actionsTab + '_' + input.key,
-          ...(input.component ?? {}),
-          'v-model': 'bindings.' + input.key,
-        }
-      }) ?? []
-    },
-    getExtendedActionButtons (): SchemaRendererComponent[] {
-      return this.extendedActions[this.actionsTab]?.api?.actions ?? []
-    },
     genExtendedForms (): VNode {
       return this.$createElement(
-        VCard,
+        VCrudApiForm,
         {
-          staticClass: 'ma-1 ma-md-2',
-        },
-        [
-          this.$createElement(
-            VCardText,
-            {},
-            [
-              this.$createElement(
-                VSchemaRenderer,
-                {
-                  props: {
-                    bindings: this.extendedActionBindings,
-                    schema: {
-                      tag: this.extendedActionCurrent?.api?.autoValidate ? 'VForm' : 'div',
-                      staticClass: 'd-flex flex-column',
-                      children: this.getExtendedActionComponents(),
-                    },
-                  },
-                  on: {
-                    input: (renderer: SchemaRendererAgent, bindings: { [key: string]: any }) => {
-                      this.actionFormValue = bindings
-                    },
-                  },
-                }
-              ),
-            ],
-          ),
-          this.$createElement(
-            VCardActions,
-            {},
-            [
-              this.$createElement(
-                VSchemaRenderer,
-                {
-                  props: {
-                    bindings: this.extendedActionBindings,
-                    schema: {
-                      tag: 'VRow',
-                      props: {
-                        noGutters: true,
-                      },
-                      children: this.getExtendedActionButtons(),
-                    },
-                  },
-                },
-              ),
-            ]
-          ),
-        ]
+          props: {
+            title: this.currentExtendedAction?.title,
+            crud: this.crudResource,
+            api: this.currentExtendedActionName,
+            isAction: true,
+            crudUser: this.crudUser,
+          },
+        }
       )
     },
     getActionsToolbarButton (): VNode {
@@ -729,7 +468,6 @@ export default baseMixins.extend<options>().extend({
               this.$emit('actions-closed', this.crudResource)
             } else {
               this.toolbarMode = 'actions'
-              this.actionFormValue = this.extendedActionFormValueDefault
               this.$emit('actions-opened', this.crudResource)
             }
           },
@@ -874,11 +612,13 @@ export default baseMixins.extend<options>().extend({
                 (on: any) => this.genIconButton(
                   this.expandMode === 'create' ? 'mdi-close' : 'mdi-plus-box',
                   this.expandMode === 'create' ? 'warning' : 'green',
-                  (e: any) => {
+                  (e: MouseEvent) => {
+                    e.preventDefault()
                     this.expandMode = this.expandMode === 'create' ? '' : 'create'
                     props.on.click(e)
                   }, {
                     ...this.sizableProps,
+                    to: this.crud.api?.create?.to,
                     iconProps: {
                       ...this.sizableProps,
                     },
@@ -889,7 +629,7 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.createDialog = visible
             },
-            this.genCreateForm()
+            [this.genCreateForm()]
           ),
         )
       }
@@ -946,7 +686,7 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.settingsDialog = visible
             },
-            this.genSettingsForm()
+            [this.genSettingsForm()]
           ),
         )
       }
@@ -969,7 +709,6 @@ export default baseMixins.extend<options>().extend({
             on: {
               change: (tab: number) => {
                 this.actionsTab = tab
-                this.actionFormValue = this.extendedActionFormValueDefault
               },
             },
           },

@@ -111,6 +111,12 @@ export default {
       selectAll: 'Select all records',
     },
   },
+  schemaBuilder: {
+    autoReactive: 'Toggle reactivity on item id change',
+    preview: 'Preview',
+    code: 'Code view',
+    editorMode: 'Toggle editor mode in preview',
+  },
   datePickerInput: {
     input: 'From {0} to {1}',
     startTime: 'Start time',

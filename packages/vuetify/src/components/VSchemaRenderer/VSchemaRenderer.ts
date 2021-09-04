@@ -1,7 +1,7 @@
 import Vue, { VNode } from 'vue'
-import { PropType, PropValidator } from 'vue/types/options'
-import { SchemaRendererComponent, EventActionType, EventActionDetails, ScehmaRendererBinding } from 'types/services/schemas'
-import { cloneObjectWithParent } from '../../util/helpers'
+import { AsyncComponentFactory, PropType } from 'vue/types/options'
+import { SchemaRendererComponent, EventActionType, EventActionDetails, SchemaRendererBinding } from 'types/services/schemas'
+import { cloneObjectWithParent, mergeDeep } from '../../util/helpers'
 import * as AvailableEvents from '../VSchemaBuilder/properties/Events'
 import { ScopedSlot } from 'vue/types/vnode'
 import { consoleError } from '../../util/console'
@@ -13,17 +13,29 @@ export default Vue.extend({
   inheritAttrs: false,
 
   props: {
-    schema: {
-      type: Object,
-      default: () => ({}),
-    } as PropValidator<Partial<SchemaRendererComponent>>,
+    children: {
+      type: Array as PropType<Array<SchemaRendererComponent>>,
+      default: () => ([]),
+    },
     bindings: {
-      type: Array as PropType<Array<ScehmaRendererBinding>>,
+      type: Array as PropType<Array<SchemaRendererBinding>>,
       default: () => ([]),
     },
     editorMode: {
       type: Boolean,
       default: false,
+    },
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
+      default: () => ({}),
+    },
+    wrap: String,
+    wrapClass: String,
+    wrapAttributes: Array,
+    attributes: Object,
+    bindingMergeDepth: {
+      type: Number,
+      default: 1,
     },
   },
 
@@ -31,26 +43,81 @@ export default Vue.extend({
     return {
       internalBindings: {} as { [key: string]: any },
       editableItems: {} as { [key: string]: any },
+      asyncComponents: {} as { [key: string]: any },
     }
   },
 
-  methods: {
-    getBindingValues (): { [key: string]: any } {
-      const bindingValues: {[key: string]: any} = {}
-      this.bindings?.forEach((binding: ScehmaRendererBinding) => {
-        if (this.internalBindings[binding.name] !== undefined) {
-          bindingValues[binding.name] = this.internalBindings[binding.name]
+  computed: {
+    inputBindingValues (): { [key: string]: any } {
+      const inputBindingValues: {[key: string]: any} = {}
+      this.bindings?.forEach((binding: SchemaRendererBinding) => {
+        if (['object', 'array', 'json', 'number', 'boolean'].includes(binding.type)) {
+          try {
+            const defaultValue = binding.default === null ? null : JSON.parse(binding.default)
+            inputBindingValues[binding.name] = defaultValue
+          } catch (error) {
+            consoleError(error)
+          }
+        } else if (binding.type === 'promise') {
+          binding.default(this).then((v: any) => {
+            inputBindingValues[binding.name] = v
+            this.$forceUpdate()
+          })
         } else {
-          if (['object', 'array', 'json', 'number', 'boolean'].includes(binding.type)) {
-            try {
-              const defaultValue = binding.default === null ? null : JSON.parse(binding.default)
-              bindingValues[binding.name] = defaultValue
-            } catch (error) {
-              consoleError(error)
+          if (typeof binding.default === 'function') {
+            inputBindingValues[binding.name] = binding.default(this)
+          } else {
+            if (typeof binding.default === 'object' && binding.default !== null) {
+              if (Array.isArray(binding.default)) {
+                inputBindingValues[binding.name] = [...binding.default]
+              } else {
+                inputBindingValues[binding.name] = { ...binding.default }
+              }
+            } else {
+              inputBindingValues[binding.name] = binding.default
+            }
+          }
+        }
+      })
+      return inputBindingValues
+    },
+  },
+
+  methods: {
+    resetBindingValues (): void {
+      this.internalBindings = {}
+      this.$forceUpdate()
+    },
+    getBindingValues (): { [key: string]: any } {
+      const bindingValues: { [key: string]: any } = {}
+
+      Object.keys(this.inputBindingValues).forEach((k: string) => {
+        if (typeof this.inputBindingValues[k] === 'object' && this.inputBindingValues[k] !== null) {
+          if (Array.isArray(this.inputBindingValues[k])) {
+            bindingValues[k] = mergeDeep([], this.inputBindingValues[k])
+          } else {
+            bindingValues[k] = mergeDeep({}, this.inputBindingValues[k])
+          }
+        } else {
+          bindingValues[k] = this.inputBindingValues[k]
+        }
+      })
+      Object.keys(this.internalBindings).forEach((k: string) => {
+        if (bindingValues.hasOwnProperty(k) && typeof bindingValues[k] === 'object') {
+          if (bindingValues[k] && this.internalBindings[k]) {
+            if (Array.isArray(bindingValues[k])) {
+              bindingValues[k] = this.internalBindings[k]
+            } else {
+              bindingValues[k] = {
+                ...bindingValues[k],
+                ...this.internalBindings[k],
+              }
             }
           } else {
-            bindingValues[binding.name] = binding.default
+            bindingValues[k] = this.internalBindings[k]
           }
+        } else {
+          bindingValues[k] = this.internalBindings[k]
         }
       })
 
@@ -91,7 +158,7 @@ export default Vue.extend({
         this.$set(ref, key, value)
       }
 
-      this.$emit('input', this, this.getBindingValues())
+      this.$emit('input', this.getBindingValues())
     },
     getBindingValue (expression: string, args: Array<any>): any {
       let expressionBinding = expression
@@ -154,6 +221,36 @@ export default Vue.extend({
       }
       return scopedSlots
     },
+    getComponentModelPropertyName (desc: SchemaRendererComponent): string {
+      if (desc['v-model-property-name']) {
+        return desc['v-model-property-name']
+      }
+
+      const eventsMap: { [key: string]: string } = {
+        VCheckbox: 'input-value',
+      }
+
+      if (desc.tag && eventsMap[desc.tag]) {
+        return eventsMap[desc.tag]
+      }
+
+      return 'value'
+    },
+    getComponentModelEventName (desc: SchemaRendererComponent): string {
+      if (desc['v-model-event']) {
+        return desc['v-model-event']
+      }
+
+      const eventsMap: { [key: string]: string } = {
+        VCheckbox: 'change',
+      }
+
+      if (desc.tag && eventsMap[desc.tag]) {
+        return eventsMap[desc.tag]
+      }
+
+      return 'input'
+    },
     evaluateComponentModel (
       props: { [key: string]: any },
       on: { [key: string]: any },
@@ -162,8 +259,8 @@ export default Vue.extend({
       argsBindings: Array<any> = []) {
       if (desc['v-model'] !== undefined) {
         const modelBinding: string = desc['v-model']
-        const vModelEventName = desc['v-model-event'] ?? 'input'
-        const vModelPropertyName = desc['v-model-property-name'] ?? 'value'
+        const vModelEventName = this.getComponentModelEventName(desc)
+        const vModelPropertyName = this.getComponentModelPropertyName(desc)
         const alreadyExistingEvents = on[vModelEventName]
         on[vModelEventName] = (val: any) => {
           this.setBindingValue(modelBinding, val, true)
@@ -243,6 +340,34 @@ export default Vue.extend({
 
       return clone
     },
+    genComponentTag (desc: SchemaRendererComponent): any {
+      if (!desc.tag) {
+        return 'div'
+      } else {
+        if (desc.tag === 'VSchemaRenderer') {
+          return 'div'
+        }
+
+        // component has factory on its description
+        if (desc.factory) {
+          if (!this.asyncComponents[desc.tag]) {
+            this.asyncComponents[desc.tag] = desc.factory
+          }
+          return this.asyncComponents[desc.tag]
+        }
+
+        // component has factory in components dictionary
+        if (this.componentsDictionary[desc.tag]) {
+          if (!this.asyncComponents[desc.tag]) {
+            this.asyncComponents[desc.tag] = this.componentsDictionary[desc.tag]
+          }
+          return this.asyncComponents[desc.tag]
+        }
+
+        // component is global
+        return desc.tag
+      }
+    },
     genComponentChildren (desc: SchemaRendererComponent, argsBindings: any = null): VNode[] {
       const children: any[] = []
 
@@ -277,13 +402,13 @@ export default Vue.extend({
           vfor.forEach((vforBind: any, index: number) => {
             const vforArgsBindings = [vforBind, ...argsBindings]
             const cloneProps = this.genComponentPropsClone(desc, index, vforArgsBindings)
-            const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
+            const rootTag = this.genComponentTag(desc)
             cloned.push(this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, vforArgsBindings)))
           })
         }
       } else {
         const cloneProps = this.genComponentPropsClone(desc, null, argsBindings)
-        const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
+        const rootTag = this.genComponentTag(desc)
         const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, argsBindings))
         cloned.push(clone)
       }
@@ -305,17 +430,18 @@ export default Vue.extend({
 
       return cloned
     },
-    genRootComponent (desc: SchemaRendererComponent, argsBindings: Array<any> = []): VNode {
-      const cloneProps = this.genComponentPropsClone(desc, null, argsBindings)
-      const rootTag = !desc.tag || desc.tag === 'VSchemaRenderer' ? 'div' : desc.tag
-      const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, argsBindings))
+    genRootComponent (): VNode {
+      const rootTag = this.genComponentTag(this)
+      const clone = this.$createElement(rootTag, {
+        attrs: this.attributes,
+      }, this.genComponentChildren(this, []))
 
-      if (desc.wrap) {
+      if (this.wrap) {
         return this.$createElement(
-          desc.wrap,
+          this.wrap,
           {
-            staticClass: desc.wrapClass ?? '',
-            attrs: (desc.wrapAttributes ?? {}),
+            staticClass: this.wrapClass ?? '',
+            attrs: (this.wrapAttributes ?? {}),
           },
           [clone]
         )
@@ -403,6 +529,6 @@ export default Vue.extend({
     },
   },
   render (h): VNode {
-    return this.genRootComponent(this.schema)
+    return this.genRootComponent()
   },
 })

@@ -2,7 +2,7 @@ import { VNode, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../../util/mixins'
 import EasyInteracts from '../../../mixins/easyinteracts'
 
-import { ScehmaRendererBinding, SchemaRendererComponent, SelectableItem } from 'types/services/schemas'
+import { SchemaRendererBinding, SchemaRendererComponent, SelectableItem } from 'types/services/schemas'
 import { VTextField } from '../../VTextField'
 import { VRow, VCol } from '../../VGrid'
 import { VSelect } from '../../VSelect'
@@ -28,8 +28,8 @@ export default baseMixins.extend<options>().extend({
       default: () => (<SchemaRendererComponent>{}),
     },
     binding: {
-      type: Object as PropType<ScehmaRendererBinding>,
-      default: () => (<ScehmaRendererBinding>{}),
+      type: Object as PropType<SchemaRendererBinding>,
+      default: () => (<SchemaRendererBinding>{}),
     },
   },
 
@@ -119,7 +119,7 @@ export default baseMixins.extend<options>().extend({
             'mdi-check-circle',
             'green',
             () => {
-              this.$emit('change', this.binding, <ScehmaRendererBinding> {
+              this.$emit('change', this.binding, <SchemaRendererBinding> {
                 name: this.name,
                 type: this.type,
                 default: this.default,

@@ -46,6 +46,8 @@ export default baseMixins.extend<options>().extend({
       default: undefined,
     },
     mode: String as PropType<VCrudMode>,
+    hideEdit: Boolean,
+    hideDelete: Boolean,
     id: String,
     label: String,
     dense: Boolean,
@@ -102,6 +104,15 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
+    removeItem(item: any) {
+      const index = this.currPageItems.indexOf(item)
+      if (index >= 0) {
+        this.currPageItems.splice(index, 1)
+      }
+    },
+    addItem(item: any) {
+      this.currPageItems.unshift(item)
+    },
     genToolbar (): VNode {
       return this.$createElement(
         VCrudToolbar,
@@ -183,6 +194,8 @@ export default baseMixins.extend<options>().extend({
             crud: this.crud,
             crudUser: this.crudUser,
             items: this.currPageItems,
+            hideEdit: this.hideEdit,
+            hideDelete: this.hideDelete,
             loading: this.loading,
             showSelect: this.showItemSelectable,
             tableSettings: this.settings,
@@ -191,6 +204,12 @@ export default baseMixins.extend<options>().extend({
           on: {
             'update-selections': (crud: CrudResource, selections: any[]) => {
               this.selectedItems = selections
+            },
+            'edit': (item: any) => {
+              this.$emit('edit', this, item)
+            },
+            'remove': (item: any) => {
+              this.$emit('remove', this, item)
             },
           },
         },
@@ -227,11 +246,11 @@ export default baseMixins.extend<options>().extend({
       if (this.items) {
         if (this.items instanceof Function) {
           this.loading = true
-          this.items(crud, page, limit, settings, filters).then((resolved: CrudQueryResult) => {
+          this.items(crud, page, limit, settings, filters).then((resolved: CrudQueryResult|null) => {
             this.loading = false
-            this.currPageItems = resolved.items
-            this.total = resolved.total
-            this.currPage = resolved.currPage
+            this.currPageItems = resolved?.items ?? []
+            this.total = resolved?.total ?? 0
+            this.currPage = resolved?.currPage ?? 0
           }).catch((e: any) => {
             consoleError(e)
             this.loading = false
@@ -243,11 +262,21 @@ export default baseMixins.extend<options>().extend({
         }
       }
     },
+    reload () {
+      if (this.crudResource) {
+        this.loadItems(this.crudResource, 1, this.showItemsPerPage, this.settings, this.filters)
+      }
+    },
+    reset () {
+      this.currPageItems = []
+      this.total = 0
+      this.currPage = 0
+    },
   },
 
   mounted (): void {
     if (this.autoLoad && this.crudResource) {
-      this.loadItems(this.crudResource, 1, this.showItemsPerPage, this.settings, this.filters)
+      this.reload()
     }
   },
 

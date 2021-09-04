@@ -1,40 +1,32 @@
-import Vue, { PropType, VNode } from 'vue'
+import { PropType, VNode } from 'vue'
+import mixins, { ExtractVue } from '../../util/mixins'
 
 import { VMenu } from '../VMenu'
 import { VTextField } from '../VTextField'
 import { VDatePicker } from '../VDatePicker'
 import { VRow, VCol } from '../VGrid'
-import { VTimePicker } from '../VTimePicker'
-import { VCard, VCardText, VCardActions } from '../VCard'
 import { VBtn } from '../VBtn'
+import { VAutocomplete } from '../VAutocomplete'
 import { VBtnToggle } from '../VBtnToggle'
+import Localable from '../../mixins/localable'
+import { makeIsoDateTimeString } from '../VCrud/util/createNativeLocalFormatter'
 
-export default Vue.extend({
-  name: 'v-date-picker-input',
+const baseMixins = mixins(
+  Localable,
+  VDatePicker,
+  VTextField,
+  /* @vue/component */
+)
+interface options extends ExtractVue<typeof baseMixins> {
+  $el: HTMLElement
+}
+
+export default baseMixins.extend<options>().extend({
+  name: 'v-timestamp-input',
 
   inheritAttrs: false,
 
   props: {
-    appendOuterIcon: String,
-    clearable: Boolean,
-    disabled: Boolean,
-    filled: Boolean,
-    flat: Boolean,
-    fullWidth: Boolean,
-    label: String,
-    outlined: Boolean,
-    placeholder: String,
-    prefix: String,
-    prependInnerIcon: String,
-    persistentPlaceholder: Boolean,
-    reverse: Boolean,
-    rounded: Boolean,
-    shaped: Boolean,
-    solo: Boolean,
-    soloInverted: Boolean,
-    suffix: String,
-    time: Boolean,
-    dense: Boolean,
     displayOptions: {
       type: Object as PropType<Intl.DateTimeFormatOptions> | undefined,
       default: undefined,
@@ -43,129 +35,118 @@ export default Vue.extend({
       type: Boolean,
       default: true,
     },
-    pickDate: {
-      type: Boolean,
-      default: true,
-    },
-    // picker
-    landscape: Boolean,
-    max: String,
-    min: String,
-    locale: String,
-    localeFirstDayOfYear: {
-      type: [String, Number],
-      default: 0,
-    },
-    firstDayOfWeek: {
-      type: [String, Number],
-      default: 0,
-    },
-    range: Boolean,
     readonly: Boolean,
-    scrollable: Boolean,
-    color: String,
-    timeFormat: {
-      type: String,
-      default: 'ampm',
+    value: {
+      type: null as any as PropType<string|string[]|Date|Date[]>,
     },
-    timeHeaderColor: String,
-    dateHeaderColor: String,
-    value: [Array, String] as PropType<string | string[] | undefined>,
   },
 
   data () {
-    let datesValue: string|string[]|undefined = this.value
-    if (!Array.isArray(datesValue) && typeof datesValue === 'string' && this.range) {
-      datesValue = datesValue.split('~')
-    }
-
-    // eslint-disable-next-line no-undef-init
-    let timeStartValue: string|string[]|undefined = undefined
-    // eslint-disable-next-line no-undef-init
-    let timeEndValue: string|string[]|undefined = undefined
-    if (datesValue) {
-      if (Array.isArray(datesValue)) {
-        timeStartValue = datesValue?.[0].split('T')[1]
-        timeEndValue = datesValue?.[1].split('T')[1]
-      } else {
-        timeStartValue = datesValue.split('T')[1]
-      }
-    }
-
-    let dOptions = this.displayOptions
-    if (!dOptions) {
-      if (!this.pickDate) {
-        dOptions = {
-          hour: 'numeric',
-          minute: 'numeric',
-        }
-      } else if (!this.pickTime) {
-        dOptions = {
-          year: 'numeric',
-          month: 'numeric',
-          day: 'numeric',
+    let fromDate = null
+    let toDate = null
+    if (this.value) {
+      if (Array.isArray(this.value)) {
+        if (this.value[0] instanceof Date) {
+          fromDate = this.value[0]
+          toDate = this.value[1]
+        } else {
+          const isoFrom = makeIsoDateTimeString(this.value[0])
+          const isoTo = makeIsoDateTimeString(this.value[1])
+          if (isoFrom) {
+            fromDate = new Date(isoFrom)
+          }
+          if (isoTo) {
+            toDate = new Date(isoTo)
+          }
         }
       } else {
-        dOptions = {
-          year: 'numeric',
-          month: 'numeric',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
+        if (this.value instanceof Date) {
+          fromDate = this.value
+        } else {
+          const iso = makeIsoDateTimeString(this.value)
+          if (iso) {
+            fromDate = new Date(iso)
+          }
         }
       }
     }
 
     return {
-      datesValue,
-      timeStartValue,
-      timeEndValue,
-      formatter: new Intl.DateTimeFormat(this.locale, dOptions),
+      fromDate,
+      toDate,
       isOpened: false,
       timeIndex: 0,
+      pickerIcon: this.prependInnerIcon || 'mdi-calendar',
     }
   },
 
   computed: {
-    displayTimestampString (): String {
-      if (!this.datesValue && !this.timeStartValue) {
+    displayFormatOptions (): Object {
+      return this.displayOptions ?? {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        ...(this.pickTime ? {
+          hour: 'numeric',
+          minute: 'numeric',
+        } : {}),
+      }
+    },
+    dateFormatter (): Intl.DateTimeFormat {
+      return new Intl.DateTimeFormat(this.currentLocale, this.displayFormatOptions)
+    },
+    numberFormatter (): Intl.NumberFormat {
+      return new Intl.NumberFormat(this.currentLocale, { style: 'decimal', minimumIntegerDigits: 2 })
+    },
+    displayString (): String {
+      if (!this.fromDate) {
         return ''
       }
 
       if (this.range) {
-        if (this.datesValue?.length === 0 && !this.timeStartValue && this.timeEndValue) {
-          return ''
-        }
-        const d1 = this.datesValue?.[0] ?? '1970-01-01'
-        const d2 = this.datesValue?.[1] ?? '1970-01-01'
-        const t1 = this.timeStartValue ?? '00:00:00'
-        const t2 = this.timeEndValue ?? '00:00:00'
-
         return this.$vuetify.lang.t('$vuetify.datePickerInput.input',
-          this.formatter.format(new Date(`${d1}T${t1}`)),
-          this.formatter.format(new Date(`${d2}T${t2}`)),
+          this.dateFormatter.format(this.fromDate),
+          this.dateFormatter.format(this.toDate),
         )
       } else {
-        const time = this.timeStartValue ?? '00:00:00'
-        const date = this.datesValue ?? '1970-01-01'
-        return this.formatter.format(new Date(date + 'T' + time))
+        return this.dateFormatter.format(this.fromDate)
       }
     },
-    timestampValue (): Date|Date[]|undefined {
+    timestamp (): Date|Date[]|null {
       if (this.range) {
-        const d1 = this.datesValue?.[0] ?? '1970-01-01'
-        const d2 = this.datesValue?.[1] ?? '1970-01-01'
-        const t1 = this.timeStartValue ?? '00:00:00'
-        const t2 = this.timeEndValue ?? '00:00:00'
-        return [
-          new Date(`${d1}T${t1}`),
-          new Date(`${d2}T${t2}`),
-        ]
+        return [this.fromDate, this.toDate]
       } else {
-        const d = this.datesValue ?? '1970-01-01'
-        const t = this.timeStartValue ?? '00:00:00'
-        return new Date(`${d}T${t}`)
+        return this.fromDate
       }
+    },
+    hours (): Array<any> {
+      const hours = []
+      for (let i = 0; i <= 23; i++) {
+        hours.push({
+          value: i,
+          text: this.numberFormatter.format(i).toString(),
+        })
+      }
+      return hours
+    },
+    minutes (): Array<any> {
+      const minutes = []
+      for (let i = 0; i <= 59; i++) {
+        minutes.push({
+          value: i,
+          text: this.numberFormatter.format(i).toString(),
+        })
+      }
+      return minutes
+    },
+    internalValue: {
+      get (): any {
+        return this.lazyValue
+      },
+      set (val: any) {
+        this.lazyValue = val
+        this.$emit('input', this.displayString)
+      },
     },
   },
 
@@ -175,267 +156,264 @@ export default Vue.extend({
       const s = d.toString()
       return s !== 'Invalid Date'
     },
-    genTimePickerDialogItem (): VNode {
-      return this.$createElement(
-        VCol,
-        {
-          props: {
-            cols: 12,
-            sm: 6,
-            md: 4,
-          },
-        },
-        [
-          this.$createElement(
-            VTimePicker,
-            {
-              props: {
-                fullWidth: true,
-                color: this.color,
-                scrollable: this.scrollable,
-                readonly: this.readonly,
-                format: this.timeFormat,
-                ampmInTitle: true,
-                headerColor: this.timeHeaderColor,
-                value: this.timeIndex === 0 ? this.timeStartValue : this.timeEndValue,
-              },
-              on: {
-                input: (ev: any) => {
-                  if (this.timeIndex === 0) {
-                    this.timeStartValue = ev
-                  } else {
-                    this.timeEndValue = ev
-                  }
-                  this.$emit('change', this.timestampValue)
-                },
-              },
-            },
-            this.range ? [
-              this.$createElement(
-                VBtnToggle,
-                {
-                  props: {
-                    value: this.timeIndex,
-                    mandatory: true,
-                  },
-                  on: {
-                    change: (e: any) => {
-                      this.timeIndex = e
-                    },
-                  },
-                },
-                [
-                  this.$createElement(
-                    VBtn,
-                    {
-                      props: {
-                        dense: true,
-                        small: true,
-                      },
-                    },
-                    this.$vuetify.lang.t('$vuetify.datePickerInput.startTime')
-                  ),
-                  this.$createElement(
-                    VBtn,
-                    {
-                      props: {
-                        dense: true,
-                        small: true,
-                      },
-                    },
-                    this.$vuetify.lang.t('$vuetify.datePickerInput.endTime')
-                  ),
-                ]
-              ),
-            ] : []
-          ),
-        ]
-      )
-    },
-    genDatePickerDialogItem (): VNode {
-      return this.$createElement(
-        VCol,
-        {
-          props: {
-            cols: 12,
-            sm: 6,
-            md: 8,
-          },
-        },
-        [
-          this.$createElement(
-            VDatePicker,
-            {
-              props: {
-                locale: this.locale,
-                range: this.range,
-                min: this.min,
-                max: this.max,
-                landscape: this.landscape,
-                firstDayOfWeek: this.firstDayOfWeek,
-                localeFirstDayOfYear: this.localeFirstDayOfYear,
-                value: this.datesValue,
-                scrollable: this.scrollable,
-                fullWidth: true,
-                color: this.color,
-                headerColor: this.dateHeaderColor,
-              },
-              on: {
-                input: (ev: any) => {
-                  this.datesValue = ev
-                  this.$emit('change', this.timestampValue)
-                },
-              },
-            },
-          ),
-        ]
-      )
-    },
-    genInputDialog (): VNode {
-      const dialogItems: VNode[] = []
-
-      if (this.pickDate) {
-        dialogItems.push(
-          this.genDatePickerDialogItem()
-        )
-      }
+    genTimePickerSimple (): VNode {
+      const extras = []
 
       if (this.pickTime) {
-        dialogItems.push(
-          this.genTimePickerDialogItem()
-        )
-      }
+        const currTimeRef: Date|null = this.timeIndex === 0 ? this.fromDate : this.toDate
 
-      return this.$createElement(
-        VMenu,
-        {
-          props: {
-            offsetY: true,
-            closeOnContentClick: false,
-            value: this.isOpened,
-          },
-          on: {
-            input: (e: any) => {
-              this.isOpened = e
-            },
-          },
-          scopedSlots: {
-            activator: (activator: any) => this.$createElement(
-              VTextField,
+        if (this.range) {
+          extras.push(
+            this.$createElement(
+              VCol,
               {
+                staticClass: 'd-flex flex-row align-center justify-center',
                 props: {
-                  dense: this.dense,
-                  solo: this.solo,
-                  soloInverted: this.soloInverted,
-                  persistentPlaceholder: this.persistentPlaceholder,
-                  suffix: this.suffix,
-                  prefix: this.prefix,
-                  outlined: this.outlined,
-                  appendOuterIcon: this.appendOuterIcon,
-                  prependInnerIcon: 'mdi-calendar',
-                  clearable: this.clearable,
-                  readonly: this.readonly,
-                  disabled: this.disabled,
-                  shaped: this.shaped,
-                  rounded: this.rounded,
-                  filled: this.filled,
-                  flat: this.flat,
-                  fullWidth: this.fullWidth,
-                  label: this.label,
-                  ...activator.attrs,
-                  value: this.displayTimestampString,
-                },
-                on: {
-                  focus: (ev: any) => {
-                    activator.on.click(ev)
-                  },
-                  'click:prepend-inner': (ev: any) => {
-                    activator.on.click(ev)
-                  },
-                  change: (ev: string|null) => {
-                    let isValid = true
-                    const dateString = ev?.includes('~') ? ev.split('~') : ev
-                    if (Array.isArray(dateString)) {
-                      for (const i in dateString) {
-                        if (!this.isDateStringValid(dateString[i])) {
-                          isValid = false
-                          break
-                        }
-                      }
-                    } else {
-                      if (!this.isDateStringValid(dateString ?? '')) {
-                        isValid = false
-                      }
-                    }
-
-                    if (dateString && isValid) {
-                      this.datesValue = dateString
-                    } else {
-                      if (this.range) {
-                        this.datesValue = []
-                      } else {
-                        this.datesValue = undefined
-                      }
-                    }
-                  },
+                  cols: 12,
+                  sm: 3,
                 },
               },
-            ),
-          },
-        },
-        [
+              [
+                this.$createElement(
+                  VBtnToggle,
+                  {
+                    props: {
+                      value: this.timeIndex,
+                      mandatory: true,
+                    },
+                    on: {
+                      change: (e: any) => {
+                        this.timeIndex = e
+                      },
+                    },
+                  },
+                  [
+                    this.$createElement(
+                      VBtn,
+                      {
+                        props: {
+                          dense: true,
+                          small: true,
+                        },
+                      },
+                      this.$vuetify.lang.t('$vuetify.datePickerInput.startTime')
+                    ),
+                    this.$createElement(
+                      VBtn,
+                      {
+                        props: {
+                          dense: true,
+                          small: true,
+                        },
+                      },
+                      this.$vuetify.lang.t('$vuetify.datePickerInput.endTime')
+                    ),
+                  ]
+                ),
+              ]
+            )
+          )
+        }
+
+        extras.push(
           this.$createElement(
-            VCard,
+            VCol,
             {
-              staticClass: 'ma-0 pa-0',
+              staticClass: 'd-flex flex-row align-center justify-center',
+              props: {
+                cols: 12,
+                sm: this.range ? 7 : 10,
+              },
             },
             [
               this.$createElement(
-                VCardText,
+                VAutocomplete,
                 {
-                  staticClass: 'ma-0 pa-0',
-                },
-                [
-                  this.$createElement(
-                    VRow,
-                    {
-                      props: {
-                        noGutters: true,
-                      },
+                  props: {
+                    items: this.hours,
+                    dense: true,
+                    solo: true,
+                    hideDetails: true,
+                    mandatory: true,
+                    value: currTimeRef?.getHours(),
+                  },
+                  on: {
+                    input: (e: Number) => {
+                      if (this.timeIndex === 0) {
+                        if (!this.fromDate) {
+                          this.fromDate = new Date()
+                        }
+                        this.fromDate.setHours(e.valueOf())
+                      } else {
+                        if (!this.toDate) {
+                          this.toDate = new Date()
+                        }
+                        this.toDate.setHours(e.valueOf())
+                      }
                     },
-                    dialogItems,
-                  ),
-                ]
+                  },
+                },
               ),
               this.$createElement(
-                VCardActions,
+                'strong',
                 {
+                  staticClass: 'px-2',
                 },
-                [
-                  this.$createElement(
-                    VBtn,
-                    {
-                      props: {
-                        color: 'primary',
-                      },
-                      on: {
-                        click: () => {
-                          this.isOpened = false
-                        },
-                      },
+                ':'
+              ),
+              this.$createElement(
+                VAutocomplete,
+                {
+                  props: {
+                    items: this.minutes,
+                    dense: true,
+                    solo: true,
+                    hideDetails: true,
+                    mandatory: true,
+                    value: currTimeRef?.getMinutes(),
+                  },
+                  on: {
+                    input: (e: Number) => {
+                      if (this.timeIndex === 0) {
+                        if (!this.fromDate) {
+                          this.fromDate = new Date()
+                        }
+                        this.fromDate.setMinutes(e.valueOf())
+                      } else {
+                        if (!this.toDate) {
+                          this.toDate = new Date()
+                        }
+                        this.toDate.setMinutes(e.valueOf())
+                      }
                     },
-                    this.$vuetify.lang.t('$vuetify.datePickerInput.ok')
-                  ),
-                ]
+                  },
+                },
+              ),
+            ]
+          )
+        )
+      }
+      return this.$createElement(
+        VRow,
+        {
+          props: {
+            align: 'center',
+            justify: 'center',
+          },
+        },
+        [
+          ...extras,
+          this.$createElement(
+            VCol,
+            {
+              staticClass: 'd-flex flex-row justify-center align-center',
+              props: {
+                cols: 12,
+                sm: 2,
+              },
+            },
+            [
+              this.$createElement(
+                VBtn,
+                {
+                  props: {
+                    color: 'primary',
+                  },
+                  on: {
+                    click: () => {
+                      this.isOpened = false
+                      this.internalValue = this.timestamp
+                    },
+                  },
+                },
+                this.$vuetify.lang.t('$vuetify.datePickerInput.ok')
               ),
             ]
           ),
         ]
       )
     },
+    genDatePickerDialogItem (): VNode {
+      return this.$createElement(
+        VDatePicker,
+        {
+          props: {
+            locale: this.locale,
+            range: this.range,
+            min: this.min,
+            max: this.max,
+            landscape: this.landscape,
+            firstDayOfWeek: this.firstDayOfWeek,
+            localeFirstDayOfYear: this.localeFirstDayOfYear,
+            scrollable: this.scrollable,
+            fullWidth: true,
+            color: this.color,
+            headerColor: this.headerColor,
+            value: this.fromDate,
+          },
+          on: {
+            input: (ev: any) => {
+              if (Array.isArray(ev)) {
+                if (!this.fromDate) {
+                  this.fromDate = new Date()
+                }
+                if (!this.toDate) {
+                  this.toDate = new Date()
+                }
+                const nvFrom = new Date(Date.parse(ev[0]))
+                const nvTo = new Date(Date.parse(ev[1]))
+
+                this.fromDate.setDate(nvFrom.getDate())
+                this.toDate.setDate(nvTo.getDate())
+              } else {
+                if (!this.fromDate) {
+                  this.fromDate = new Date()
+                }
+                const nvFrom = new Date(Date.parse(ev))
+                this.fromDate.setDate(nvFrom.getDate())
+              }
+              this.internalValue = this.timestamp
+            },
+          },
+        },
+        [
+          this.genTimePickerSimple(),
+        ]
+      )
+    },
+    genPrependInnerSlot () {
+      return this.genSlot('prepend', 'inner', [
+        this.genIcon('picker', () => {
+          this.isOpened = !this.isOpened
+        }),
+      ])
+    },
   },
 
   render (h): VNode {
-    return this.genInputDialog()
+    return h(
+      VMenu,
+      {
+        props: {
+          offsetY: true,
+          closeOnContentClick: false,
+          value: this.isOpened,
+        },
+        on: {
+          input: (e: any) => {
+            this.isOpened = e
+          },
+        },
+        scopedSlots: {
+          activator: () => {
+            const csuper = this.constructor as any
+            return csuper.superOptions.render.call(this, h)
+          },
+        },
+      },
+      [
+        this.genDatePickerDialogItem(),
+      ]
+    )
   },
 })

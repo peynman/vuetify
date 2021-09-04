@@ -1,8 +1,7 @@
-import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, ScehmaRendererBinding } from 'types/services/schemas'
+import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, SchemaRendererBinding } from 'types/services/schemas'
 import Vue, { PropType, VNode } from 'vue'
 import { VTab, VTabs, VTabItem, VTabsItems, VTabsSlider } from '../../VTabs'
 import { VSchemaBuilderStandardTagAttributes } from '../helpers/TagAttributes'
-import WEBTYPES from '../helpers/TagHelpers'
 import VSchemaBuilderItemEvent from './VSchemaBuilderItemEvent'
 import VSchemaBuilderItemProperty from './VSchemaBuilderItemProperty'
 import VSchemaBuilderAddEvent from './VSchemaBuilderItemAddEvent'
@@ -21,6 +20,7 @@ export default Vue.extend({
       type: Object as PropType<SchemaRendererComponent>,
       default: () => (<SchemaRendererComponent>{}),
     },
+    properties: Object as PropType<{ [key: string]: any }>,
   },
 
   data () {
@@ -66,13 +66,10 @@ export default Vue.extend({
 
   computed: {
     availableItemEvents (): TagEvent[] {
-      const events: TagEvent[] = []
-      WEBTYPES.contributions.html.tags.forEach((tag: any) => {
-        if (this.item.tag === tag.name) {
-          tag.events.forEach((e: any) => { events.push(e) })
-        }
-      })
-      return events
+      return this.properties?.events ?? []
+    },
+    AvailableItemProperties (): any[] {
+      return this.properties?.attributes ?? []
     },
   },
 
@@ -155,7 +152,7 @@ export default Vue.extend({
               item: this.item,
             },
             on: {
-              'add-binding': (binding: ScehmaRendererBinding) => {
+              'add-binding': (binding: SchemaRendererBinding) => {
                 if (!this.itemProps.bindings) {
                   this.itemProps.bindings = []
                 }
@@ -168,7 +165,7 @@ export default Vue.extend({
         ),
       ];
 
-      (this.itemProps.bindings ?? []).forEach((binding: ScehmaRendererBinding) => {
+      (this.itemProps.bindings ?? []).forEach((binding: SchemaRendererBinding) => {
         properties.push(
           this.$createElement(
             VSchemaRendererBinding,
@@ -178,16 +175,16 @@ export default Vue.extend({
                 binding,
               },
               on: {
-                change: (before: ScehmaRendererBinding, after: ScehmaRendererBinding) => {
-                  const bindingIndex = this.itemProps.bindings.map((binding: ScehmaRendererBinding) => binding.name).indexOf(before.name)
+                change: (before: SchemaRendererBinding, after: SchemaRendererBinding) => {
+                  const bindingIndex = this.itemProps.bindings.map((binding: SchemaRendererBinding) => binding.name).indexOf(before.name)
                   if (bindingIndex >= 0) {
                     this.itemProps.bindings.splice(bindingIndex, 1, after)
                     this.$emit('change-props', this.itemProps)
                     this.$forceUpdate()
                   }
                 },
-                'remove-binding': (binding: ScehmaRendererBinding) => {
-                  const bindingIndex = this.itemProps.bindings.map((binding: ScehmaRendererBinding) => binding.name).indexOf(binding.name)
+                'remove-binding': (binding: SchemaRendererBinding) => {
+                  const bindingIndex = this.itemProps.bindings.map((binding: SchemaRendererBinding) => binding.name).indexOf(binding.name)
                   if (bindingIndex >= 0) {
                     this.itemProps.bindings.splice(bindingIndex, 1)
                     this.$emit('change-props', this.itemProps)
@@ -209,13 +206,10 @@ export default Vue.extend({
         return this.GetDynamicPropertiesForSchemaRenderer()
       }
 
-      WEBTYPES.contributions.html.tags.forEach((tag: any) => {
-        if (this.item.tag === tag.name) {
-          properties.push(...tag.attributes.sort(
-            (a: any, b: any) => a.name.localeCompare(b.name)
-          ).map((attr: any) => this.GetDynamicInputForItemWithProperty(attr)))
-        }
-      })
+      properties.push(...this.AvailableItemProperties.sort(
+        (a: any, b: any) => a.name.localeCompare(b.name)
+      ).map((attr: any) => this.GetDynamicInputForItemWithProperty(attr)))
+
       return properties
     },
 

@@ -2,7 +2,7 @@ import { VNode, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../../util/mixins'
 import EasyInteracts from '../../../mixins/easyinteracts'
 
-import { ScehmaRendererBinding, SchemaRendererComponent, SelectableItem } from 'types/services/schemas'
+import { SchemaRendererBinding, SchemaRendererComponent, SelectableItem } from 'types/services/schemas'
 import { VBtn } from '../../VBtn'
 import { VToolbar, VToolbarTitle } from '../../VToolbar'
 import { VSpacer, VCol } from '../../VGrid'
@@ -155,7 +155,7 @@ export default baseMixins.extend<options>().extend({
               on: {
                 click: () => {
                   if (this.add_type != null && this.add_name != null) {
-                    this.$emit('add-binding', <ScehmaRendererBinding> {
+                    this.$emit('add-binding', <SchemaRendererBinding> {
                       name: this.add_name,
                       default: this.add_default,
                       type: this.add_type,

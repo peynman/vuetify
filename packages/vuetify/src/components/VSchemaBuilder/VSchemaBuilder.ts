@@ -18,6 +18,7 @@ import { SchemaRendererComponent } from 'types/services/schemas'
 import { cloneObjectWithParentCalculate, cloneObjectWithParentRemove, makeRandomId } from '../../util/helpers'
 import { consoleError } from '../../util/console'
 import EasyInteracts from '../../mixins/easyinteracts'
+import { VTextarea } from '../VTextarea'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -39,19 +40,62 @@ export default baseMixins.extend<options>().extend({
       type: String,
       default: 'maker',
     },
-    items: {
-      type: Array as PropType<SchemaRendererComponent[]>,
+    value: {
+      type: Object as PropType<SchemaRendererComponent>,
+      default: () => ({
+        id: 'root',
+        tag: 'VSchemaRenderer',
+        props: {
+          bindings: [],
+        },
+      } as SchemaRendererComponent),
+    },
+    extraTypes: {
+      type: Array,
       default: () => ([]),
     },
-    value: null as any as PropType<any>,
   },
 
   data () {
+    let schema = cloneObjectWithParentCalculate(this.value, null)
+    if (schema === null) {
+      schema = {
+        id: 'root',
+        tag: 'VSchemaRenderer',
+        props: {
+          bindings: [],
+        },
+        children: [],
+      }
+    }
     return {
       mode: this.startMode,
       editablePreview: false,
-      treeview: this.items,
+      rootChild: schema,
+      autoReactive: true,
     }
+  },
+
+  computed: {
+    generatedSchema (): Partial<SchemaRendererComponent> {
+      return cloneObjectWithParentRemove(this.rootChild)
+    },
+  },
+
+  watch: {
+    value: {
+      deep: true,
+      handler () {
+        this.rootChild = cloneObjectWithParentCalculate(this.value, null)
+        this.$forceUpdate()
+      },
+    },
+    rootChild: {
+      deep: true,
+      handler () {
+        this.$emit('input', this.generatedSchema)
+      },
+    },
   },
 
   methods: {
@@ -96,7 +140,7 @@ export default baseMixins.extend<options>().extend({
       for (const prop in props) {
         newProps[prop] = props[prop]
       }
-      item.props = newProps
+      this.$set(item, 'props', newProps)
     },
     onChangeAttributes (item: SchemaRendererComponent, attributes: { [key: string]: any }) {
       for (const attr in attributes) {
@@ -113,10 +157,10 @@ export default baseMixins.extend<options>().extend({
       if (tags.length > 0) {
         tags.forEach((tag: string) => {
           if (!item.children) {
-            item.children = []
+            this.$set(item, 'children', [])
           }
           if (Array.isArray(item.children)) {
-            item.children.push({
+            this.$set(item.children, item.children.length, {
               tag,
               id: tag + '_' + makeRandomId(5),
               slot: 'default',
@@ -139,7 +183,7 @@ export default baseMixins.extend<options>().extend({
 
     },
     onDownload () {
-      const treeview = cloneObjectWithParentRemove(this.onGenerateSchema())
+      const treeview = this.generatedSchema
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(treeview, null, 2))
       const downloadAnchorNode = document.createElement('a')
       downloadAnchorNode.setAttribute('href', dataStr)
@@ -166,7 +210,7 @@ export default baseMixins.extend<options>().extend({
                 try {
                   const fileHandler = e.target
                   const json = JSON.parse(fileHandler.result)
-                  this.treeview = [cloneObjectWithParentCalculate(json, null)]
+                  this.rootChild = cloneObjectWithParentCalculate(json, null)
                 } catch (e) {
                   consoleError(e)
                 }
@@ -178,9 +222,6 @@ export default baseMixins.extend<options>().extend({
         false
       )
       downloadAnchorNode.remove()
-    },
-    onGenerateSchema (): Partial<SchemaRendererComponent> {
-      return this.treeview[0] as SchemaRendererComponent
     },
     genRoot (): VNode {
       const children = [
@@ -211,21 +252,46 @@ export default baseMixins.extend<options>().extend({
           },
         },
         [
-          this.genToolbarButton(this.editablePreview ? 'mdi-image-edit' : 'mdi-image-filter-black-white', {
-            color: this.editablePreview ? 'primary' : 'secondary',
-          }, () => {
-            this.editablePreview = !this.editablePreview
-          }),
-          this.genToolbarButton(this.mode === 'viewer' ? 'mdi-close' : 'mdi-eye', {
-            color: this.mode === 'viewer' ? 'warning' : 'secondary',
-          }, () => {
-            this.mode = this.mode === 'viewer' ? 'maker' : 'viewer'
-          }),
-          this.genToolbarButton(this.mode === 'editor' ? 'mdi-close' : 'mdi-code-array', {
-            color: this.mode === 'editor' ? 'warning' : 'secondary',
-          }, () => {
-            this.mode = this.mode === 'editor' ? 'maker' : 'editor'
-          }),
+          this.genTooltip(
+            this.$vuetify.lang.t('$vuetify.schemaBuilder.editorMode'),
+            (on: any) => {
+              return this.genToolbarButton(this.editablePreview ? 'mdi-image-edit' : 'mdi-image-filter-black-white', {
+                color: this.editablePreview ? 'primary' : 'secondary',
+              }, () => {
+                this.editablePreview = !this.editablePreview
+              }, on)
+            }
+          ),
+          this.genTooltip(
+            this.$vuetify.lang.t('$vuetify.schemaBuilder.autoReactive'),
+            (on: any) => {
+              return this.genToolbarButton('mdi-vuejs', {
+                color: this.autoReactive ? 'primary' : 'secondary',
+              }, () => {
+                this.autoReactive = !this.autoReactive
+              }, on)
+            }
+          ),
+          this.genTooltip(
+            this.$vuetify.lang.t('$vuetify.schemaBuilder.preview'),
+            (on: any) => {
+              return this.genToolbarButton(this.mode === 'viewer' ? 'mdi-close' : 'mdi-eye', {
+                color: this.mode === 'viewer' ? 'warning' : 'secondary',
+              }, () => {
+                this.mode = this.mode === 'viewer' ? 'maker' : 'viewer'
+              }, on)
+            }
+          ),
+          this.genTooltip(
+            this.$vuetify.lang.t('$vuetify.schemaBuilder.code'),
+            (on: any) => {
+              return this.genToolbarButton(this.mode === 'editor' ? 'mdi-close' : 'mdi-code-array', {
+                color: this.mode === 'editor' ? 'warning' : 'secondary',
+              }, () => {
+                this.mode = this.mode === 'editor' ? 'maker' : 'editor'
+              }, on)
+            }
+          ),
           this.$createElement(
             VDivider,
             {
@@ -253,18 +319,43 @@ export default baseMixins.extend<options>().extend({
           this.$createElement(
             VSpacer
           ),
+          this.$createElement(
+            VSchemaBuilderAppend,
+            {
+              props: {
+                item: this.rootChild,
+                extraTypes: this.extraTypes,
+              },
+              on: {
+                'change-props': this.onChangeProps,
+                'change-attributes': this.onChangeAttributes,
+                'change-events': this.onChangeEvents,
+                'add-child': this.onAddChild,
+              },
+            }
+          ),
+          this.$createElement(
+            VDivider,
+            {
+              staticClass: 'mx-3',
+              props: {
+                vertical: true,
+                inset: true,
+              },
+            },
+          ),
           this.genMenu(
             'mdi-refresh',
             'red',
             'Reset SchemaBuilder Tree',
             this.genRemoveItemMenuContent(() => {
-              this.treeview = [
-                {
-                  tag: 'VSchemaRenderer',
-                  id: 'root',
-                  children: [],
+              this.rootChild = {
+                tag: 'VSchemaRenderer',
+                props: {
+                  bindings: [],
                 },
-              ]
+                children: [],
+              }
             }),
             null,
             {},
@@ -296,7 +387,7 @@ export default baseMixins.extend<options>().extend({
         ]
       )
     },
-    genToolbarButton (icon: string, props: {}, click: Function): VNode {
+    genToolbarButton (icon: string, props: any, click: Function, on: any = {}): VNode {
       return this.$createElement(VBtn, {
         props: {
           icon: true,
@@ -304,6 +395,7 @@ export default baseMixins.extend<options>().extend({
           ...props,
         },
         on: {
+          ...on,
           click: () => {
             click()
           },
@@ -323,7 +415,7 @@ export default baseMixins.extend<options>().extend({
           props: {
             rounded: true,
             hoverable: true,
-            items: this.treeview,
+            items: this.rootChild.children,
             dense: true,
             'multiple-active': true,
             'open-all': true,
@@ -342,6 +434,9 @@ export default baseMixins.extend<options>().extend({
                   on: {
                     'change-label': (newLabel: string) => {
                       e.item.id = newLabel
+                      if (this.autoReactive) {
+                        e.item['v-model'] = `$(bindings.${newLabel})`
+                      }
                     },
                   },
                 }),
@@ -349,6 +444,7 @@ export default baseMixins.extend<options>().extend({
                   staticClass: 'mt-n4 me-3',
                   props: {
                     item: e.item,
+                    extraTypes: this.extraTypes,
                   },
                   on: {
                     'move-first': this.onMoveFirst,
@@ -365,24 +461,28 @@ export default baseMixins.extend<options>().extend({
                 }),
               ]
             },
-            append: e => {
-              return null
-            },
           },
         }
       )
     },
     genPreview (): VNode {
-      const schema = this.onGenerateSchema()
       return this.$createElement(
         VSchemaRenderer,
         {
+          staticClass: this.rootChild.staticClass,
           props: {
-            schema: {
-              children: schema?.children,
-            },
-            bindings: schema.props?.bindings,
+            children: this.rootChild.children,
+            attributes: this.rootChild.attributes,
+            wrap: this.rootChild.wrap,
+            wrapClass: this.rootChild.wrapClass,
+            wrapAtrributes: this.rootChild.wrapAttributes,
+            wrapStyle: this.rootChild.wrapStyle,
+            ...this.rootChild.props,
             editorMode: this.editablePreview,
+            componentsDictionary: this.extraTypes?.filter((type: any) => (type.factory)).reduce((factory: any, type: any) => {
+              factory[type.name] = type.factory
+              return factory
+            }, {}),
           },
           on: {
             'move-first': this.onMoveFirst,
@@ -401,10 +501,18 @@ export default baseMixins.extend<options>().extend({
     },
     genCoder (): VNode {
       return this.$createElement(
-        'pre',
+        VTextarea,
         {
+          staticStyle: {
+            direction: 'ltr',
+          },
+          props: {
+            rows: 15,
+            rowHeight: 10,
+            counter: true,
+            value: JSON.stringify(cloneObjectWithParentRemove(this.generatedSchema), null, 2),
+          },
         },
-        JSON.stringify(cloneObjectWithParentRemove(this.onGenerateSchema()), null, 2)
       )
     },
   },

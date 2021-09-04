@@ -29,6 +29,10 @@ export default baseMixins.extend<options>().extend({
       type: Object as PropType<SchemaRendererComponent>,
       default: () => (<SchemaRendererComponent>{}),
     },
+    extraTypes: {
+      type: Array,
+      default: () => ([]),
+    },
   },
 
   data: () => ({
@@ -36,9 +40,15 @@ export default baseMixins.extend<options>().extend({
     settingsTabsModel: 'properties',
   }),
 
-  methods: {
-    genAddBlockDialogContent (): VNodeChildren {
-      const items: any[] = []
+  computed: {
+    typesDictionary (): { [key: string]: any } {
+      return this.extraTypes?.reduce((dic: { [key: string]: any }, type: any) => {
+        dic[type.name] = type
+        return dic
+      }, TypesDictionary) as { [key: string]: any }
+    },
+    typeNamesArrayList (): any[] {
+      const items = []
       for (const block in TypesDictionary) {
         const def = TypesDictionary[block]
         items.push({
@@ -46,6 +56,19 @@ export default baseMixins.extend<options>().extend({
           title: def.name,
         })
       }
+      for (const block in this.extraTypes) {
+        const def = this.extraTypes[block] as { [key: string]: any }
+        items.push({
+          id: def.name,
+          title: def.name,
+        })
+      }
+      return items
+    }
+  },
+
+  methods: {
+    genAddBlockDialogContent (): VNodeChildren {
       return [
         this.$createElement(
           VAutocomplete,
@@ -56,7 +79,7 @@ export default baseMixins.extend<options>().extend({
               'x-small': true,
               block: false,
               outlined: true,
-              items,
+              items: this.typeNamesArrayList,
               'item-text': 'title',
               'item-value': 'id',
               chips: true,
@@ -319,9 +342,12 @@ export default baseMixins.extend<options>().extend({
               color: 'secondary',
             },
           }, this.item.tag),
-          this.genIconDialog('mdi-settings', 'primary', '#' + this.item.id + ' Settings', [
+          this.genIconDialog('mdi-cog', 'primary', '#' + this.item.id + ' Settings', [
             h(VSchemaBuilderItemProperties, {
-              props: { item: this.item },
+              props: {
+                item: this.item,
+                properties: this.item.tag ? this.typesDictionary[this.item.tag] : {},
+              },
               on: {
                 'change-props': (e: any) => {
                   this.$emit('change-props', this.item, e)

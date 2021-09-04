@@ -67,6 +67,8 @@ export default baseMixins.extend<options>().extend({
     loading: Boolean,
     showSelect: Boolean,
     showQuickSearch: Boolean,
+    hideEdit: Boolean,
+    hideDelete: Boolean,
     tableSettings: {
       type: Object as PropType<CrudTableSettings> | undefined,
       default: undefined,
@@ -89,27 +91,34 @@ export default baseMixins.extend<options>().extend({
     },
     showDelete (): Boolean {
       if (this.crudResource?.api?.delete?.permission) {
-        return this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.delete)
+        return  this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.delete) && !this.hideDelete
       }
       return false
     },
     showEdit (): Boolean {
       if (this.crudResource?.api?.edit?.permission) {
-        return this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.edit)
+        return this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.edit) && !this.hideEdit
       }
       return false
     },
     singleItemActions (): CrudAction[] {
-      return this.crudResource?.actions?.filter((
-        act: CrudAction) => !act.batched && this.crudUser?.hasAccessToApiMethod(act.api)
-      ) ?? []
+      return Object.keys(this.crudResource?.actions ?? {}).filter(
+        (name: string) => this.crudResource?.actions?.[name] &&
+          !this.crudResource?.actions[name].batched &&
+          this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api)
+      ).map((name: string) => (this.crudResource?.actions?.[name])) as CrudAction[] ?? []
     },
   },
 
   methods: {
     onEditItem (item: any) {
+      this.$emit('edit', item)
     },
     onRemoveItem (item: any) {
+      this.$emit('remove', item)
+    },
+    getItemClass (item: any) {
+      return item._class
     },
     updateScopedColumnsAndHeaders (headers: DataTableHeader[], scopedSlots: { [key: string]: any }) {
       this.crudResource?.columns?.forEach((col: CrudColumn) => {
@@ -140,7 +149,7 @@ export default baseMixins.extend<options>().extend({
                       default: col,
                     },
                   ],
-                  schema: col.component,
+                  children: [col.component],
                 },
               },
             )
@@ -223,9 +232,17 @@ export default baseMixins.extend<options>().extend({
                     icon: true,
                     small: true,
                     color: 'secondary',
+                    href: this.crudResource?.api?.edit?.href?.replace(
+                      `{${this.crudResource?.primaryKey}}`, scopedItem.item[this.crudResource?.primaryKey]
+                    ),
+                    to: this.crudResource?.api?.edit?.to?.replace(
+                      `{${this.crudResource?.primaryKey}}`, scopedItem.item[this.crudResource?.primaryKey]
+                    ),
+                    target: '_blank',
                   },
                   on: {
-                    click: () => {
+                    click: (event: MouseEvent) => {
+                      event.preventDefault()
                       this.onEditItem(scopedItem.item)
                     },
                   },
@@ -275,6 +292,7 @@ export default baseMixins.extend<options>().extend({
           showSelect: this.showSelect,
           calculateWidths: true,
           itemsPerPage: this.perPage,
+          itemClass: this.getItemClass,
         },
         on: {
           'item-selected': (selection: SelectionChange) => {

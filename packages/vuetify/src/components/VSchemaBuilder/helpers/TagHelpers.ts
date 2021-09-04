@@ -1,14 +1,6 @@
 import { TagSettings } from 'types/services/schemas'
 
-import WEBTYPES from '../../../../dev/web-types.json'
-
-// const WEBTYPES = {
-//   contributions: {
-//     html: {
-//       tags: [],
-//     },
-//   },
-// }
+import WEBTYPES from './web-types.json'
 
 export const TypesDictionary: {[key: string]: any} = {}
 WEBTYPES.contributions.html.tags?.forEach((tag: any) => {

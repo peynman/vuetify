@@ -88,8 +88,10 @@ export default Vue.extend({
             },
             on: {
               input: (v: any) => {
-                this.isLabelDirty = true
-                this.dirtyLabel = v
+                if (v && v.length > 0) {
+                  this.isLabelDirty = true
+                  this.dirtyLabel = v
+                }
               },
               keydown: (v: KeyboardEvent) => {
                 if (v.key === 'Escape' || v.key === 'Esc' || v.keyCode === 16) {
@@ -100,13 +102,10 @@ export default Vue.extend({
                 }
               },
               change: (v: any) => {
-                this.isLabelDirty = true
-                this.dirtyLabel = v
-              },
-            },
-            scopedSlots: {
-              append: () => {
-                return 'Salam'
+                if (v && v.length > 0) {
+                  this.isLabelDirty = true
+                  this.dirtyLabel = v
+                }
               },
             },
           }),

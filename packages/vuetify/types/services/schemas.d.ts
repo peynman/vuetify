@@ -1,3 +1,5 @@
+import { Component } from 'vue';
+import { AsyncComponentFactory } from 'vue/types/options';
 import { VNodeData, VNode } from 'vue/types/umd'
 
 export interface SchemaRendererComponent extends VNodeData {
@@ -18,9 +20,12 @@ export interface SchemaRendererComponent extends VNodeData {
   'v-model'?: string
   'v-model-property-name'?: string
   'v-model-event'?: string
+  factory?: AsyncComponentFactory
 }
 
-export interface ScehmaRendererBinding {
+export type SchemaRendererBindingPromise = (r: SchemaRendererAgent) => Promise<any>
+
+export interface SchemaRendererBinding {
   name: string
   type: string
   default: any
@@ -30,6 +35,7 @@ export interface SchemaRendererAgent {
   setBindingValue(key: string, value: any, recursive: boolean): void
   getBindingValue(expression: string, args: Array<any>): any
   getBindingValues(): { [key: string]: any }
+  resetBindingValues(): void
 }
 
 export interface TagEventArgument {

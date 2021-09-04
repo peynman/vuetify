@@ -8,6 +8,7 @@ import VColumnBitwiseFlags from './Columns/VColumnBitwiseFlags'
 import VColumnTimestamp from './Columns/VColumnTimestamp'
 import VColumnDecoratable from './Columns/VColumnDecoratable'
 import VColumnCrudObject from './Columns/VColumnCrudObject'
+import VCrudApiForm from './VCrudApiForm'
 
 export {
   VCrud,
@@ -20,5 +21,6 @@ export {
   VColumnDecoratable,
   VColumnCrudObject,
   VCrudObjectPicker,
+  VCrudApiForm,
 }
 export default VCrud

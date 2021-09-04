@@ -13,13 +13,32 @@ export const makeIsoDateTimeString = (dateTimeString: string) => {
 
   const trimmedDateTimeString = dateTimeString.trim().split(' ')[0]
   const [dateString, unTrimmedTimeString] = trimmedDateTimeString.split('T')
-  const [timeString, timeZoneString] = (unTrimmedTimeString || '00:00:00+00:00').split('+')
-  const [hour, minute, second] = (timeString || '00:00:00').split(':')
-  const [timezoneHour, timezoneMinute] = (timeZoneString || '00:00').split('')
+  const trimmedSafeTime = unTrimmedTimeString || '00:00:00+00:00'
   const [year, month, date] = dateString.split('-')
-  return [pad(year, 4), pad(month || 1), pad(date || 1)].join('-') + 'T' +
-          [pad(hour || 0, 2), pad(minute || 0, 2), pad(second || 0, 2)].join(':') + '+' +
-          [pad(timezoneHour || 0, 2), pad(timezoneMinute || 0, 2)].join(':')
+
+  if ((trimmedSafeTime.includes('+') || trimmedSafeTime.includes('-')) && !trimmedSafeTime.includes('.')) {
+    const offsetDirection = trimmedSafeTime.includes('+') ? '+' : '-'
+    const [timeString, timeZoneString] = trimmedSafeTime.split(offsetDirection)
+    const [hour, minute, second] = (timeString || '00:00:00').split(':')
+    const [timezoneHour, timezoneMinute] = (timeZoneString || '00:00').split('')
+    return [pad(year, 4), pad(month || 1), pad(date || 1)].join('-') + 'T' +
+            [pad(hour || 0, 2), pad(minute || 0, 2), pad(second || 0, 2)].join(':') + '+' +
+            [pad(timezoneHour || 0, 2), pad(timezoneMinute || 0, 2)].join(':')
+  } else if (unTrimmedTimeString?.includes('.') && unTrimmedTimeString?.includes('Z')) {
+    const [timeString, timeZoneString] = (unTrimmedTimeString || '00:00:00.000000Z').split('.')
+    const [hour, minute, second] = (timeString || '00:00:00').split(':')
+    const timezoneSafeString = timeZoneString || '0000000Z'
+    const timeZoneSeconds = parseInt(timezoneSafeString.substr(0, timezoneSafeString.indexOf('Z')))
+    const timezoneHour = Math.floor(timeZoneSeconds / 3600)
+    const timezoneMinute = Math.abs(timeZoneSeconds / 3600) - Math.floor(Math.abs(timeZoneSeconds / 3600)) * 60
+    return [pad(year, 4), pad(month || 1), pad(date || 1)].join('-') + 'T' +
+            [pad(hour || 0, 2), pad(minute || 0, 2), pad(second || 0, 2)].join(':') + '+' +
+            [pad(timezoneHour || 0, 2), pad(timezoneMinute || 0, 2)].join(':')
+  } else {
+    return [pad(year, 4), pad(month || 1), pad(date || 1)].join('-') + 'T' +
+            [pad(0, 2), pad(0, 2), pad(0, 2)].join(':') + '+' +
+            [pad(0, 2), pad(0, 2)].join(':')
+  }
 }
 
 function createNativeLocaleFormatter (

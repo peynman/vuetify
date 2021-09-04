@@ -1,4 +1,4 @@
-import { ScehmaRendererBinding, SchemaRendererComponent } from 'types/services/schemas'
+import { SchemaRendererBinding, SchemaRendererComponent } from 'types/services/schemas'
 
 export interface CrudResource {
   name: string
@@ -6,10 +6,13 @@ export interface CrudResource {
   singular: string
   primaryKey: string
   columns: Array<CrudColumn>
-  relations?: Array<CrudResource>
+  relations?: Array<CrudRelation>
   exportableColumns?: Array<string>
-  actions?: Array<CrudAction>
+  actions?: {
+    [key: string]: CrudAction
+  },
   api?: {
+    [key: string]: ApiMethod|undefined
     create?: ApiMethod
     edit?: ApiMethod
     export?: ApiMethod
@@ -18,30 +21,36 @@ export interface CrudResource {
   }
 }
 
+export interface CrudRelation extends CrudResource {
+  autoloads: Boolean
+}
+
 export interface CrudAction {
   title: string
   name: string
   icon?: string
   color?: string
-  batched: Boolean
+  batched?: Boolean
   batchKey?: string
   batchItemPrimaryKey?: string
   api: ApiMethod
 }
 
 export interface ApiMethod {
-  method: string
-  url: string
+  method?: string
+  url?: string
+  to?: string
+  href?: string
   permission?: string
-  bindings?: ScehmaRendererBinding[]
-  autoValidate: boolean
+  bindings?: SchemaRendererBinding[]
+  autoValidate?: boolean
   form?: Array<CrudFormInput>
   actions?: SchemaRendererComponent[]
 }
 
 export interface CrudFormInput {
   key: string
-  rules?: Array<string>
+  rules?: Array<Function>
   component?: SchemaRendererComponent
 }
 
