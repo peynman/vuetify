@@ -5,7 +5,7 @@ import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
 import EasyInteracts from '../../mixins/easyinteracts'
 
-import { CrudAction, CrudColumn, CrudFormInput, CrudResource, CrudTableSettings, CrudUser } from 'types/services/crud'
+import { CrudAction, CrudColumn, ApiMethod, CrudResource, CrudTableSettings, CrudUser } from 'types/services/crud'
 import { VToolbar } from '../VToolbar'
 import { VNode } from 'vue/types/umd'
 import { VBtn } from '../VBtn'
@@ -21,10 +21,8 @@ import { VCheckbox } from '../VCheckbox'
 
 import VCrudRelationsList from './VCrudRelationsList'
 import { VTab, VTabs, VTabsSlider } from '../VTabs'
-import VSchemaRenderer from '../VSchemaRenderer'
-import { SchemaRendererBinding, SchemaRendererAgent, SchemaRendererComponent } from 'types/services/schemas'
-import { getNestedObjectValue } from './util/helpers'
 import VCrudApiForm from './VCrudApiForm'
+import { mergeDeep } from '../../util/helpers'
 
 const baseMixins = mixins(
   EasyInteracts,
@@ -84,6 +82,10 @@ export default baseMixins.extend<options>().extend({
       type: Boolean,
       default: true,
     },
+    dialogProps: {
+      type: Object,
+      default: () => ({}),
+    },
     crudUser: {
       type: Object as PropType<CrudUser> | undefined,
       default: undefined,
@@ -93,7 +95,7 @@ export default baseMixins.extend<options>().extend({
       default: () => ({}),
     },
     valueFilters: {
-      type: Object as PropType<CrudTableSettings>,
+      type: Object as PropType<{ [key: string]: any }>,
       default: () => ({}),
     },
     valueSelections: {
@@ -114,8 +116,8 @@ export default baseMixins.extend<options>().extend({
       savingFilters: false,
       actionsTab: 0,
       actionFormValue: {} as { [key: string]: any },
-      filtersFormValue: { ...this.valueFilters } as { [key: string]: any },
-      settingsForm: { ...this.valueSettings } as CrudTableSettings,
+      filtersFormValue: mergeDeep({}, this.valueFilters ?? {}) as { [key: string]: any },
+      settingsForm: mergeDeep({}, this.valueSettings ?? {}) as CrudTableSettings,
     }
   },
 
@@ -142,7 +144,8 @@ export default baseMixins.extend<options>().extend({
       return this.showExport === true || (this.showExport === 'auto' && hasExportPermission)
     },
     hasActions (): Boolean {
-      return (this.crudResource?.actions?.length ?? 0) > 0 && this.showActions !== false
+      return (Object.keys(this.crudResource?.actions ?? {})
+        .filter((ak: string) => !this.crudResource?.actions?.[ak].batched).length ?? 0) > 0 && this.showActions !== false
     },
     hasFilters (): Boolean {
       return (this.crudResource?.api?.query?.form?.length ?? 0) > 0 && this.showFilters !== false
@@ -157,11 +160,13 @@ export default baseMixins.extend<options>().extend({
       return this.toolbarMode === 'search'
     },
     extendedActions (): CrudAction[] {
-      return Object.keys(this.crudResource?.actions ?? {}).filter((name: string) => {
-        return this.crudResource?.actions?.[name].batched && (
-          !this.crudUser || this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api)
-        )
-      })
+      return Object.keys(this.crudResource?.actions ?? {})
+        .filter((name: string) => this.crudResource?.actions?.[name].api)
+        .filter((name: string) => {
+          return this.crudResource?.actions?.[name].batched && (
+            !this.crudUser || this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api as ApiMethod)
+          )
+        })
         .map((name: string) => (this.crudResource?.actions?.[name])) as CrudAction[]
     },
     currentExtendedAction (): CrudAction|undefined {
@@ -171,13 +176,25 @@ export default baseMixins.extend<options>().extend({
       return Object.keys(this.crudResource?.actions ?? {})[this.actionsTab]
     },
   },
+
+  watch: {
+    valueSettings () {
+      this.settingsForm = mergeDeep({}, this.valueSettings)
+    },
+    valueFilters () {
+      this.filtersFormValue = mergeDeep({}, this.valueFilters)
+    },
+  },
+
   methods: {
-    genDialog (activator: Function, visible: boolean, onVisibleChanged: Function, content: VNode[]): VNode {
+    genDialog (activator: Function, visible: boolean, onVisibleChanged: Function, content: VNode[], props = {}): VNode {
       return this.$createElement(
         VDialog,
         {
           props: {
             value: visible,
+            ...(this.dialogProps ?? {}),
+            ...props,
           },
           scopedSlots: {
             activator: (props: any) => {
@@ -237,7 +254,6 @@ export default baseMixins.extend<options>().extend({
         VCrudApiForm,
         {
           props: {
-            title: this.$vuetify.lang.t('$vuetify.crud.toolbar.create.title'),
             crud: this.crudResource,
             api: 'create',
             crudUser: this.crudUser,
@@ -245,43 +261,56 @@ export default baseMixins.extend<options>().extend({
         }
       )
     },
-    genFiltersForm (): VNode[] {
-      return [
-        this.$createElement(
-          VCrudApiForm,
-          {
-            props: {
-              title: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.title'),
-              crud: this.crudResource,
-              crudUser: this.crudUser,
-              api: 'query',
-              extraActions: [
-                {
-                  tag: 'VBtn',
-                  props: {
-                    color: 'secondary',
-                    dense: true,
-                    dark: true,
-                    loading: this.savingFilters,
-                    disabled: !this.filtersFormValue.valid,
-                  },
-                  on: {
-                    click: () => {
-                      this.savingFilters = true
-                      this.$emit('save-settings', this.crudResource, this.filtersFormValue, () => {
-                        this.filtersDialog = false
-                        this.savingFilters = false
-                        this.expandMode = ''
-                      })
-                    },
-                  },
-                  children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.save'),
+    genFiltersForm (): VNode {
+      return this.$createElement(
+        VCrudApiForm,
+        {
+          props: {
+            crud: this.crudResource,
+            crudUser: this.crudUser,
+            api: 'query',
+            extraActions: [
+              {
+                tag: 'VBtn',
+                props: {
+                  color: 'secondary',
+                  dense: true,
+                  dark: true,
+                  loading: this.savingFilters,
+                  disabled: !this.filtersFormValue.valid,
                 },
-              ],
-            },
+                on: {
+                  click: () => {
+                    this.savingFilters = true
+                    this.$emit('save-filters', this.crudResource, this.filtersFormValue, () => {
+                      this.filtersDialog = false
+                      this.savingFilters = false
+                      this.expandMode = ''
+                    })
+                  },
+                },
+                children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.save'),
+              },
+              {
+                tag: 'VBtn',
+                props: {
+                  color: 'secondary',
+                  dense: true,
+                  dark: true,
+                },
+                on: {
+                  click: () => {
+                    this.settingsDialog = false
+                    this.expandMode = ''
+                    this.$emit('reset-filters', this.crudResource)
+                  },
+                },
+                children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.reset'),
+              },
+            ],
           },
-        ),
-      ]
+        },
+      )
     },
     genSettingsForm (): VNode {
       return this.genFormCard(this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.title'), [
@@ -433,7 +462,7 @@ export default baseMixins.extend<options>().extend({
               click: () => {
                 this.settingsDialog = false
                 this.expandMode = ''
-                this.$emit('change-settings', this.crudResource, this.settingsForm)
+                this.$emit('reload', this.crudResource, this.filtersFormValue, this.settingsForm, null)
               },
             },
           },
@@ -446,7 +475,6 @@ export default baseMixins.extend<options>().extend({
         VCrudApiForm,
         {
           props: {
-            title: this.currentExtendedAction?.title,
             crud: this.crudResource,
             api: this.currentExtendedActionName,
             isAction: true,
@@ -529,13 +557,14 @@ export default baseMixins.extend<options>().extend({
                 this.searchTerm = s
               },
               keydown: (e: KeyboardEvent) => {
-                if (e.keyCode === 13) {
-                  this.$emit('search', this.crudResource, this.searchTerm, this.filtersFormValue, this.settingsForm)
+                if (e.key === 'Enter' && this.searchTerm && this.searchTerm.length > 1) {
+                  this.$emit('reload', this.crudResource, this.settingsForm, this.filtersFormValue, this.searchTerm)
                 }
               },
             },
           },
         ),
+
       ]
     },
     getCommonToolbarTools (): VNode[] {
@@ -548,7 +577,7 @@ export default baseMixins.extend<options>().extend({
             (on: any) =>
               this.genIconButton('mdi-refresh', 'secondary',
                 () => {
-                  this.$emit('reload', this.crudResource, this.filtersFormValue, this.settingsForm)
+                  this.$emit('reload', this.crudResource, this.settingsForm, this.filtersFormValue, null)
                 },
                 {
                   loading: this.loading,
@@ -619,6 +648,7 @@ export default baseMixins.extend<options>().extend({
                   }, {
                     ...this.sizableProps,
                     to: this.crud.api?.create?.to,
+                    href: this.crud.api?.create?.href,
                     iconProps: {
                       ...this.sizableProps,
                     },
@@ -657,7 +687,7 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.filtersDialog = visible
             },
-            this.genFiltersForm()
+            [this.genFiltersForm()]
           ),
         )
       }
@@ -731,7 +761,7 @@ export default baseMixins.extend<options>().extend({
                     },
                     act.icon
                   ) : '',
-                  act.title,
+                  typeof act.title === 'function' ? act.title(this, this.crudResource, act) : act.title,
                 ]
               )
             }),

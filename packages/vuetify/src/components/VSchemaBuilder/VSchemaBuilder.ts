@@ -90,12 +90,6 @@ export default baseMixins.extend<options>().extend({
         this.$forceUpdate()
       },
     },
-    rootChild: {
-      deep: true,
-      handler () {
-        this.$emit('input', this.generatedSchema)
-      },
-    },
   },
 
   methods: {
@@ -106,6 +100,8 @@ export default baseMixins.extend<options>().extend({
           item.parent.children.splice(index, 1)
           item.parent.children.unshift(item)
         }
+
+        this.$emit('input', this.generatedSchema)
       }
     },
     onMoveLast (item: SchemaRendererComponent) {
@@ -115,6 +111,8 @@ export default baseMixins.extend<options>().extend({
           item.parent.children.splice(index, 1)
           item.parent.children.push(item)
         }
+
+        this.$emit('input', this.generatedSchema)
       }
     },
     onMoveUp (item: SchemaRendererComponent) {
@@ -124,6 +122,8 @@ export default baseMixins.extend<options>().extend({
           item.parent.children.splice(index, 1)
           item.parent.children.splice(index - 1, 0, item)
         }
+
+        this.$emit('input', this.generatedSchema)
       }
     },
     onMoveDown (item: SchemaRendererComponent) {
@@ -133,6 +133,8 @@ export default baseMixins.extend<options>().extend({
           item.parent.children.splice(index, 1)
           item.parent.children.splice(index + 1, 0, item)
         }
+
+        this.$emit('input', this.generatedSchema)
       }
     },
     onChangeProps (item: SchemaRendererComponent, props: { [key: string]: any }) {
@@ -141,17 +143,21 @@ export default baseMixins.extend<options>().extend({
         newProps[prop] = props[prop]
       }
       this.$set(item, 'props', newProps)
+      this.$emit('input', this.generatedSchema)
     },
     onChangeAttributes (item: SchemaRendererComponent, attributes: { [key: string]: any }) {
       for (const attr in attributes) {
         item[attr] = attributes[attr]
       }
+      this.$emit('input', this.generatedSchema)
     },
     onChangeEvents (item: SchemaRendererComponent, events: { [key: string]: any }) {
       item.on = { ...events }
+      this.$emit('input', this.generatedSchema)
     },
     onChangeSlots (item: SchemaRendererComponent, slots: { [key: string]: any }) {
       item.slotDetails = slots
+      this.$emit('input', this.generatedSchema)
     },
     onAddChild (item: SchemaRendererComponent, tags: Array<string>) {
       if (tags.length > 0) {
@@ -169,6 +175,7 @@ export default baseMixins.extend<options>().extend({
             })
           }
         })
+        this.$emit('input', this.generatedSchema)
       }
     },
     onRemoveItem (item: SchemaRendererComponent) {
@@ -176,6 +183,7 @@ export default baseMixins.extend<options>().extend({
         const itemIndex = item.parent.children.map((i: any) => (i.id)).indexOf(item.id)
         if (itemIndex >= 0) {
           item.parent.children.splice(itemIndex, 1)
+          this.$emit('input', this.generatedSchema)
         }
       }
     },
@@ -211,6 +219,7 @@ export default baseMixins.extend<options>().extend({
                   const fileHandler = e.target
                   const json = JSON.parse(fileHandler.result)
                   this.rootChild = cloneObjectWithParentCalculate(json, null)
+                  this.$emit('input', this.generatedSchema)
                 } catch (e) {
                   consoleError(e)
                 }

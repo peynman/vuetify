@@ -9,6 +9,7 @@ import { DataTableHeader } from 'types'
 import VSchemaRenderer from '../VSchemaRenderer'
 import { VBtn } from '../VBtn'
 import { VIcon } from '../VIcon'
+import { VTooltip } from '../VTooltip'
 
 type ScopedItem = {
   isMobile: boolean
@@ -91,7 +92,7 @@ export default baseMixins.extend<options>().extend({
     },
     showDelete (): Boolean {
       if (this.crudResource?.api?.delete?.permission) {
-        return  this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.delete) && !this.hideDelete
+        return this.crudUser?.hasAccessToApiMethod(this.crudResource?.api?.delete) && !this.hideDelete
       }
       return false
     },
@@ -111,6 +112,9 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
+    markActionLoading (item: any, act: CrudAction, loading: boolean): void {
+      this.$set(item, '_' + act.name + '_loading', loading)
+    },
     onEditItem (item: any) {
       this.$emit('edit', item)
     },
@@ -120,6 +124,37 @@ export default baseMixins.extend<options>().extend({
     getItemClass (item: any) {
       return item._class
     },
+    getScopedColoumnActionButton (scopedItem: ScopedItem, act: CrudAction, ac: any) {
+      return this.$createElement(
+        VBtn,
+        {
+          props: {
+            icon: true,
+            small: true,
+            loading: scopedItem.item['_' + act.name + '_loading'],
+          },
+          on: {
+            ...ac.on,
+            click: (c: any) => {
+              if (act.click) {
+                act.click(this, scopedItem.item, act)
+              }
+            },
+          },
+        },
+        [
+          this.$createElement(
+            VIcon,
+            {
+              props: {
+                small: true,
+              },
+            },
+            act.icon ?? 'mdi-content-save-edit-outline',
+          ),
+        ]
+      )
+    }
     updateScopedColumnsAndHeaders (headers: DataTableHeader[], scopedSlots: { [key: string]: any }) {
       this.crudResource?.columns?.forEach((col: CrudColumn) => {
         if (this.tableSettings?.hideColumns?.includes(col.name)) {
@@ -170,23 +205,48 @@ export default baseMixins.extend<options>().extend({
           const actions: VNode[] = [
             ...this.singleItemActions.map((act: CrudAction) => {
               return this.$createElement(
-                VBtn,
+                VTooltip,
                 {
                   props: {
-                    icon: true,
-                    small: true,
+                    top: true,
+                  },
+                  scopedSlots: {
+                    activator: (ac: any) => {
+                      if (act.component) {
+                        return this.$createElement(
+                          VSchemaRenderer,
+                          {
+                            props: {
+                              bindings: [
+                                {
+                                  name: 'item',
+                                  type: 'default',
+                                  default: scopedItem.item,
+                                },
+                                {
+                                  name: 'activator',
+                                  type: 'default',
+                                  default: ac,
+                                },
+                                {
+                                  name: 'action',
+                                  type: 'default',
+                                  default: act,
+                                }
+                              ],
+                              children: [act.component]
+                            },
+                          }
+                        )
+                      } else {
+                        return this.getScopedColoumnActionButton(scopedItem, act, ac)
+                      }
+                      return
+                    },
                   },
                 },
                 [
-                  this.$createElement(
-                    VIcon,
-                    {
-                      props: {
-                        small: true,
-                      },
-                    },
-                    act.icon ?? 'mdi-content-save-edit-outline',
-                  ),
+                  act.title,
                 ]
               )
             }),

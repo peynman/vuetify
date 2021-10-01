@@ -5,9 +5,8 @@ import VIcon from '../VIcon'
 import VBtn from '../VBtn'
 import VChip from '../VChip'
 import VTextField from '../VTextField'
-import VLabel from '../VLabel'
 import { VSpacer, VCol } from '../VGrid'
-import { VToolbar } from '../VToolbar'
+import { VToolbar, VToolbarTitle } from '../VToolbar'
 import { VTreeview } from '../VTreeview'
 import { VSelect } from '../VSelect'
 import { VDivider } from '../VDivider'
@@ -425,10 +424,10 @@ export default baseMixins.extend<options>().extend({
             this.mode = this.mode === 'editor' ? 'code' : 'editor'
           }),
           this.$createElement(
-            VLabel,
+            VToolbarTitle,
             {
               props: {
-                dark: this.mode !== 'code',
+                dark: this.mode === 'code',
               },
               on: {
                 click: () => {

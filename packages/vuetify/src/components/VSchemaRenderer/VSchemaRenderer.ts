@@ -37,11 +37,15 @@ export default Vue.extend({
       type: Number,
       default: 1,
     },
+    value: {
+      type: Object as PropType<{ [key: string]: any }>,
+      default: () => ({} as { [key: string]: any }),
+    },
   },
 
   data () {
     return {
-      internalBindings: {} as { [key: string]: any },
+      internalBindings: this.value ?? {},
       editableItems: {} as { [key: string]: any },
       asyncComponents: {} as { [key: string]: any },
     }

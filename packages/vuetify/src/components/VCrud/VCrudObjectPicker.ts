@@ -14,6 +14,8 @@ import { consoleError } from '../../util/console'
 import { VCard, VCardText, VCardTitle, VCardActions } from '../VCard'
 import EasyInteracts from '../../mixins/easyinteracts'
 import VCrudPagination from './VCrudPagination'
+import { VProgressLinear } from 'vuetify/lib'
+import { mergeDeep } from '../../util/helpers'
 
 const defaultMenuProps = {
   ...VSelectMenuProps,
@@ -46,6 +48,16 @@ export default baseMixins.extend<options>().extend({
       type: Function as PropType<Function> | undefined,
       default: undefined,
     },
+    valueSettings: {
+      type: Object as PropType<CrudTableSettings>,
+      default: () => ({
+        perPage: 10,
+      }),
+    },
+    valueFilters: {
+      type: Object as PropType<{ [key: string]: any }>,
+      default: () => ({}),
+    },
     autoLoad: {
       type: Boolean,
       default: true,
@@ -64,11 +76,19 @@ export default baseMixins.extend<options>().extend({
       currPage: 1,
       refId: 1,
       isLoading: false,
-      settings: {
-        perPage: this.itemsPerPage,
-      } as CrudTableSettings,
-      filters: {} as { [key: string]: any },
+      settings: mergeDeep({}, this.valueSettings ?? {}) as CrudTableSettings,
+      filters: mergeDeep({}, this.valueFilters ?? {}) as { [key: string]: any },
+      searchTerm: undefined as String|undefined,
     }
+  },
+
+  watch: {
+    valueSettings () {
+      this.settings = mergeDeep({}, this.valueSettings)
+    },
+    valueFilters () {
+      this.filters = mergeDeep({}, this.valueFilters)
+    },
   },
 
   mounted (): void {
@@ -98,19 +118,98 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
-    loadItems (crud: CrudResource, page: number, limit: number, settings?: Object, filters?: Object) {
+    loadItems (crud: CrudResource, page: number, limit: number, settings?: Object, filters?: Object, search?: String) {
       if (this.crudLoaderFunction) {
         this.isLoading = true
-        this.crudLoaderFunction(crud, page, limit, settings, filters).then((resolved: CrudQueryResult) => {
-          this.isLoading = false
+        this.crudLoaderFunction(crud, page, limit, settings, filters, search).then((resolved: CrudQueryResult) => {
           this.currPageItems = resolved.items
           this.total = resolved.total
           this.currPage = resolved.currPage
         }).catch((e: any) => {
           consoleError(e)
+        }).finally(() => {
           this.isLoading = false
         })
       }
+    },
+    genToolbar (): VNode {
+      return this.$createElement(
+        VCrudToolbar,
+        {
+          staticClass: 'flex-grow-1',
+          staticStyle: {
+            position: 'relative',
+          },
+          props: {
+            crud: this.crud,
+            showSettings: false,
+            showActions: false,
+            showCreate: false,
+            dense: true,
+            small: true,
+            loading: this.isLoading,
+          },
+          scopedSlots: {
+            'prepend-tools': (data: CrudToolbarScopedItem) => {
+              if (data.mode !== 'default') return ''
+              if (!this.multiple) return ''
+
+              return this.genTooltip(
+                this.$vuetify.lang.t('$vuetify.crud.picker.selectAll'),
+                (on: any, value: boolean) => this.genIconButton('mdi-check-all', 'secondary', (e: any) => {
+
+                }, {
+                  small: true,
+                  iconProps: {
+                    small: true,
+                  },
+                },
+                on)
+              )
+            },
+          },
+          on: {
+            reload: (crud: CrudResource, settings: CrudTableSettings, filters: Object, searchTerm: string) => {
+              this.filters = filters
+              this.settings = settings
+              this.searchTerm = searchTerm
+              this.loadItems(
+                crud,
+                this.currPage,
+                this.showItemsPerPage,
+                settings,
+                filters,
+                searchTerm,
+              )
+            },
+          },
+        },
+      )
+    },
+    genPagination (): VNode {
+      return this.$createElement(
+        VCrudPagination,
+        {
+          staticClass: 'flex-grow-1',
+          props: {
+            loading: this.isLoading,
+            totalVisible: this.totalVisible,
+            total: this.total,
+            pageCount: parseInt(Math.ceil(this.total / this.showItemsPerPage)),
+            itemsCount: this.currPageItems.length,
+            perPage: this.showItemsPerPage,
+            value: this.currPage,
+          },
+          on: {
+            input: (page: number) => {
+              if (this.crudResource) {
+                this.currPage = page
+                this.loadItems(this.crudResource, this.currPage, this.showItemsPerPage, this.settings, this.filters, this.searchTerm)
+              }
+            },
+          },
+        },
+      )
     },
     genList (): VNode {
       return this.genListWithSlot()
@@ -121,6 +220,58 @@ export default baseMixins.extend<options>().extend({
         .map(slotName => this.$createElement('template', {
           slot: slotName,
         }, this.$slots[slotName]))
+
+      const items = [
+        this.$createElement(
+          VCardTitle,
+          {
+            staticClass: 'pa-0 ma-0',
+          },
+          [
+            this.genToolbar(),
+          ],
+        ),
+      ]
+      if (this.isLoading) {
+        items.push(this.$createElement(
+          VProgressLinear,
+          {
+            props: {
+              indeterminate: true,
+            },
+          }
+        ))
+      }
+      items.push(...[
+        this.$createElement(
+          VCardText,
+          {
+            staticClass: 'pa-0 ma-0 mt-1',
+            staticStyle: {
+              height: '200px',
+              overflowY: 'scroll',
+            },
+          },
+          [
+            this.$createElement(VSelectList, {
+              ...this.listData,
+            }, slots),
+          ]
+        ),
+        this.$createElement(
+          VCardActions,
+          {
+            staticClass: 'ma-0 pa-0',
+            staticStyle: {
+              height: '70px',
+            },
+          },
+          [
+            this.genPagination(),
+          ],
+        ),
+      ])
+
       // Requires destructuring due to Vue
       // modifying the `on` property when passed
       // as a referenced object
@@ -132,115 +283,7 @@ export default baseMixins.extend<options>().extend({
             flat: true,
           },
         },
-        [
-          this.$createElement(
-            VCardTitle,
-            {
-              staticClass: 'pa-0 ma-0',
-            },
-            [
-              this.$createElement(
-                VCrudToolbar,
-                {
-                  staticClass: 'flex-grow-1',
-                  staticStyle: {
-                    position: 'relative',
-                  },
-                  props: {
-                    crud: this.crud,
-                    showSettings: false,
-                    showActions: false,
-                    showCreate: false,
-                    showReload: false,
-                    dense: true,
-                    small: true,
-                    loading: this.isLoading,
-                  },
-                  scopedSlots: {
-                    'prepend-tools': (data: CrudToolbarScopedItem) => {
-                      if (data.mode !== 'default') return ''
-                      return this.genTooltip(
-                        this.$vuetify.lang.t('$vuetify.crud.picker.selectAll'),
-                        (on: any, value: boolean) => this.genIconButton('mdi-check-all', 'secondary', (e: any) => {
-
-                        }, {
-                          small: true,
-                          iconProps: {
-                            small: true,
-                          },
-                        },
-                        on)
-                      )
-                    },
-                  },
-                  on: {
-                    'change-filters': (crud: CrudResource, filters: { [key: string]: any }) => {
-                      this.filters = filters
-                      this.loadItems(
-                        crud,
-                        this.currPage,
-                        this.showItemsPerPage,
-                        this.settings,
-                        this.filters
-                      )
-                    },
-                    search: (crud: CrudResource, searchTerm: string, settings: CrudTableSettings, filters: Object) => {
-                    },
-                  },
-                },
-              ),
-            ],
-          ),
-          this.$createElement(
-            VCardText,
-            {
-              staticClass: 'pa-0 ma-0',
-              staticStyle: {
-                height: '200px',
-                overflowY: 'scroll',
-              },
-            },
-            [
-              this.$createElement(VSelectList, {
-                ...this.listData,
-              }, slots),
-            ]
-          ),
-          this.$createElement(
-            VCardActions,
-            {
-              staticClass: 'ma-0 pa-0',
-              staticStyle: {
-                height: '70px',
-              },
-            },
-            [
-              this.$createElement(
-                VCrudPagination,
-                {
-                  staticClass: 'flex-grow-1',
-                  props: {
-                    loading: this.isLoading,
-                    totalVisible: this.totalVisible,
-                    total: this.total,
-                    pageCount: parseInt(Math.ceil(this.total / this.showItemsPerPage)),
-                    itemsCount: this.currPageItems.length,
-                    perPage: this.showItemsPerPage,
-                    value: this.currPage,
-                  },
-                  on: {
-                    input: (page: number) => {
-                      if (this.crudResource) {
-                        this.currPage = page
-                        this.loadItems(this.crudResource, this.currPage, this.showItemsPerPage, this.settings, this.filters)
-                      }
-                    },
-                  },
-                },
-              ),
-            ],
-          ),
-        ]
+        items
       )
     },
   },

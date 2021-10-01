@@ -1,5 +1,9 @@
 import { SchemaRendererBinding, SchemaRendererComponent } from 'types/services/schemas'
 
+export interface CrudPresenter {
+  markActionLoading (item: any, act: CrudAction, loading: boolean): void
+}
+
 export interface CrudResource {
   name: string
   plural: string
@@ -26,17 +30,21 @@ export interface CrudRelation extends CrudResource {
 }
 
 export interface CrudAction {
-  title: string
+  title: string | Function
   name: string
   icon?: string
   color?: string
   batched?: Boolean
   batchKey?: string
   batchItemPrimaryKey?: string
-  api: ApiMethod
+  click?: Function
+  component?: SchemaRendererComponent
+  loading?: boolean
+  api?: ApiMethod
 }
 
 export interface ApiMethod {
+  title?: string | Function
   method?: string
   url?: string
   to?: string
@@ -58,6 +66,7 @@ export interface CrudColumn {
   name: string
   title: string
   sortable: boolean
+  artificial?: Boolean
   component: SchemaRendererComponent
 }
 

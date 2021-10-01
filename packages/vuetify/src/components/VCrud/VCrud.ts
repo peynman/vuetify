@@ -11,6 +11,7 @@ import VCrudPagination from './VCrudPagination'
 import { CrudQueryResult, CrudResource, CrudTableSettings, CrudUser } from 'types/services/crud'
 import { consoleError } from '../../util/console'
 import createApiUser from './util/createApiUser'
+import { mergeDeep } from '../../util/helpers'
 
 type VCrudMode = 'MANAGE' | 'QUERY';
 
@@ -28,7 +29,8 @@ export type ItemsFetchCallback = (
   page: number,
   limit: number,
   settings?: Object,
-  filters?: Object
+  filters?: Object,
+  searchTerm?: String,
 ) => Promise<CrudQueryResult>
 
 export default baseMixins.extend<options>().extend({
@@ -45,6 +47,16 @@ export default baseMixins.extend<options>().extend({
       type: Object as PropType<any> | undefined,
       default: undefined,
     },
+    valueSettings: {
+      type: Object as PropType<CrudTableSettings>,
+      default: () => ({
+        perPage: 10,
+      }),
+    },
+    valueFilters: {
+      type: Object as PropType<{ [key: string]: any }>,
+      default: () => ({}),
+    },
     mode: String as PropType<VCrudMode>,
     hideEdit: Boolean,
     hideDelete: Boolean,
@@ -53,10 +65,6 @@ export default baseMixins.extend<options>().extend({
     dense: Boolean,
     flat: Boolean,
     totalVisible: Number,
-    itemsPerPage: {
-      type: Number,
-      default: 10,
-    },
     showPagination: {
       type: Boolean,
       default: true,
@@ -76,14 +84,12 @@ export default baseMixins.extend<options>().extend({
       currPageItems: [] as any[],
       total: 0,
       currPage: 1,
-      refId: 1,
       loading: false,
       showActionsSelect: false,
-      settings: {
-        perPage: this.itemsPerPage,
-      } as CrudTableSettings,
-      filters: {} as { [key: string]: any },
+      settings: mergeDeep({}, this.valueSettings ?? {}) as CrudTableSettings,
+      filters: mergeDeep({}, this.valueFilters ?? {}) as { [key: string]: any },
       selectedItems: [] as any[],
+      searchTerm: undefined as String|undefined,
     }
   },
 
@@ -96,21 +102,30 @@ export default baseMixins.extend<options>().extend({
       return null
     },
     showItemsPerPage (): number {
-      return this.settings?.perPage?.valueOf() ?? this.itemsPerPage.valueOf()
+      return this.settings?.perPage?.valueOf() ?? 10
     },
     showItemSelectable (): Boolean {
       return this.showSelect === true || (this.showSelect === 'auto' && this.showActionsSelect)
     },
   },
 
+  watch: {
+    valueSettings () {
+      this.settings = mergeDeep({}, this.valueSettings)
+    },
+    valueFilters () {
+      this.filters = mergeDeep({}, this.valueFilters)
+    },
+  },
+
   methods: {
-    removeItem(item: any) {
+    removeItem (item: any) {
       const index = this.currPageItems.indexOf(item)
       if (index >= 0) {
         this.currPageItems.splice(index, 1)
       }
     },
-    addItem(item: any) {
+    addItem (item: any) {
       this.currPageItems.unshift(item)
     },
     genToolbar (): VNode {
@@ -133,18 +148,18 @@ export default baseMixins.extend<options>().extend({
             valueSelections: this.selectedItems,
           },
           on: {
-            reload: (crud: CrudResource, settings: CrudTableSettings, filters: Object) => {
-              this.settings = settings
+            reload: (crud: CrudResource, settings: CrudTableSettings, filters: Object, searchTerm?: String) => {
               this.filters = filters
+              this.settings = settings
+              this.searchTerm = searchTerm
               this.loadItems(
                 crud,
                 this.currPage,
                 this.showItemsPerPage,
                 settings,
-                filters
+                filters,
+                searchTerm
               )
-            },
-            search: (crud: CrudResource, searchTerm: string, settings: CrudTableSettings, filters: Object) => {
             },
             'actions-opened': (crud: CrudResource) => {
               this.showActionsSelect = true
@@ -152,35 +167,17 @@ export default baseMixins.extend<options>().extend({
             'actions-closed': (crud: CrudResource) => {
               this.showActionsSelect = false
             },
-            'change-settings': (crud: CrudResource, settings: CrudTableSettings) => {
-              this.settings = settings
-              this.loadItems(
-                crud,
-                this.currPage,
-                this.showItemsPerPage,
-                this.settings,
-                this.filters
-              )
-            },
-            'change-filters': (crud: CrudResource, filters: { [key: string]: any }) => {
-              this.filters = filters
-              this.loadItems(
-                crud,
-                this.currPage,
-                this.showItemsPerPage,
-                this.settings,
-                this.filters
-              )
-            },
             'reset-settings': (crud: CrudResource) => {
+              this.$emit('reset-settings', crud)
             },
             'reset-filters': (crud: CrudResource) => {
+              this.$emit('reset-filters', crud)
             },
             'save-settings': (crud: CrudResource, settings: CrudTableSettings, callback: Function) => {
-              setTimeout(callback, 1500)
+              this.$emit('save-settings', crud, settings, callback)
             },
             'save-filters': (crud: CrudResource, filters: { [key: string]: any }, callback: Function) => {
-              setTimeout(callback, 1500)
+              this.$emit('save-filters', crud, filters, callback)
             },
           },
         },
@@ -205,10 +202,10 @@ export default baseMixins.extend<options>().extend({
             'update-selections': (crud: CrudResource, selections: any[]) => {
               this.selectedItems = selections
             },
-            'edit': (item: any) => {
+            edit: (item: any) => {
               this.$emit('edit', this, item)
             },
-            'remove': (item: any) => {
+            remove: (item: any) => {
               this.$emit('remove', this, item)
             },
           },
@@ -242,11 +239,11 @@ export default baseMixins.extend<options>().extend({
         },
       )
     },
-    loadItems (crud: CrudResource, page: number, limit: number, settings?: Object, filters?: Object) {
+    loadItems (crud: CrudResource, page: number, limit: number, settings?: Object, filters?: Object, searchTerm?: String) {
       if (this.items) {
         if (this.items instanceof Function) {
           this.loading = true
-          this.items(crud, page, limit, settings, filters).then((resolved: CrudQueryResult|null) => {
+          this.items(crud, page, limit, settings, filters, searchTerm).then((resolved: CrudQueryResult|null) => {
             this.loading = false
             this.currPageItems = resolved?.items ?? []
             this.total = resolved?.total ?? 0
@@ -264,7 +261,7 @@ export default baseMixins.extend<options>().extend({
     },
     reload () {
       if (this.crudResource) {
-        this.loadItems(this.crudResource, 1, this.showItemsPerPage, this.settings, this.filters)
+        this.loadItems(this.crudResource, 1, this.showItemsPerPage, this.settings, this.filters, this.searchTerm)
       }
     },
     reset () {

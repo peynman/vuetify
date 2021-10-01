@@ -54,6 +54,9 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
+    getItemRealColumns (item: TreeViewItem): CrudColumn[] {
+      return item.crud.columns.filter((col: CrudColumn) => !col.artificial)
+    },
     getRelationsTree (relations: CrudResource[]|undefined, path: string): TreeViewItem[] {
       return relations?.reduce<TreeViewItem[]>((items: any[], curr: CrudResource) => {
         const myPath = (path !== '' ? path + '.' : '') + curr.name
@@ -85,13 +88,13 @@ export default baseMixins.extend<options>().extend({
     getItemSelectedColumns (item: TreeViewItem): number[] {
       const actives: number[] = []
       if (this.isRelationActive(item)) {
-        const columns = this.internalValues[item.path].split(',')
-        if (columns.length > 0) {
+        const columns = this.internalValues[item.path]?.split?.(',')
+        if (columns?.length > 0) {
           if (columns[0] === '*') {
             return actives
           } else {
-            item.crud.columns.forEach((col: CrudColumn, index: number) => {
-              if (columns.includes(col.name)) {
+            this.getItemRealColumns(item).forEach((col: CrudColumn, index: number) => {
+              if (columns?.includes(col.name)) {
                 actives.push(index)
               }
             })
@@ -150,7 +153,7 @@ export default baseMixins.extend<options>().extend({
                     change: onChange,
                   },
                 },
-                item.crud.columns.map<VNode>((col: CrudColumn): VNode => {
+                this.getItemRealColumns(item).map<VNode>((col: CrudColumn): VNode => {
                   return this.$createElement(
                     VListItem,
                     {
@@ -227,7 +230,7 @@ export default baseMixins.extend<options>().extend({
                       this.$set(
                         this.internalValues,
                         leaf.item.path,
-                        leaf.item.crud.columns
+                        this.getItemRealColumns(leaf.item)
                           .map((col: CrudColumn) => col.name)
                           .filter((name: string, index: number) => columns.includes(index)).join(',')
                       )

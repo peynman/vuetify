@@ -23,7 +23,6 @@ export default baseMixins.extend<options>().extend({
 
   props: {
     id: String,
-    title: String,
     api: String,
     isAction: Boolean,
     loading: Boolean,
@@ -194,8 +193,9 @@ export default baseMixins.extend<options>().extend({
         schema.tag = 'div'
       }
 
+      const title: string = typeof this.apiMethod?.title === 'function' ? this.apiMethod?.title(this, this.crudResource, this.api) : this.apiMethod?.title
       return this.genSchemaFormCard(
-        this.title,
+        title ?? '',
         this.formBindings,
         schema,
         this.getApiFormActionButtons()
