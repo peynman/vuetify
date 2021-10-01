@@ -136,8 +136,8 @@ export default baseMixins.extend<options>().extend({
                   tag: 'VProgressLinear',
                   props: {
                     indeterminate: true,
-                  }
-                }]: []),
+                  },
+                }] : []),
                 {
                   tag: 'VCardText',
                   children: [formSchema],

@@ -4,7 +4,7 @@ import mixins, { ExtractVue } from '../../util/mixins'
 import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
 import { VDataTable } from '../VDataTable'
-import { CrudAction, CrudColumn, CrudTableSettings, CrudUser } from 'types/services/crud'
+import { ApiMethod, CrudAction, CrudColumn, CrudTableSettings, CrudUser } from 'types/services/crud'
 import { DataTableHeader } from 'types'
 import VSchemaRenderer from '../VSchemaRenderer'
 import { VBtn } from '../VBtn'
@@ -103,11 +103,13 @@ export default baseMixins.extend<options>().extend({
       return false
     },
     singleItemActions (): CrudAction[] {
-      return Object.keys(this.crudResource?.actions ?? {}).filter(
-        (name: string) => this.crudResource?.actions?.[name] &&
+      return Object.keys(this.crudResource?.actions ?? {})
+        .filter((name: string) => this.crudResource?.actions?.[name].api)
+        .filter(
+          (name: string) => this.crudResource?.actions?.[name] &&
           !this.crudResource?.actions[name].batched &&
-          this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api)
-      ).map((name: string) => (this.crudResource?.actions?.[name])) as CrudAction[] ?? []
+          this.crudUser?.hasAccessToApiMethod(this.crudResource?.actions[name].api as ApiMethod)
+        ).map((name: string) => (this.crudResource?.actions?.[name])) as CrudAction[] ?? []
     },
   },
 
@@ -154,7 +156,7 @@ export default baseMixins.extend<options>().extend({
           ),
         ]
       )
-    }
+    },
     updateScopedColumnsAndHeaders (headers: DataTableHeader[], scopedSlots: { [key: string]: any }) {
       this.crudResource?.columns?.forEach((col: CrudColumn) => {
         if (this.tableSettings?.hideColumns?.includes(col.name)) {
@@ -232,21 +234,20 @@ export default baseMixins.extend<options>().extend({
                                   name: 'action',
                                   type: 'default',
                                   default: act,
-                                }
+                                },
                               ],
-                              children: [act.component]
+                              children: [act.component],
                             },
                           }
                         )
                       } else {
                         return this.getScopedColoumnActionButton(scopedItem, act, ac)
                       }
-                      return
                     },
                   },
                 },
                 [
-                  act.title,
+                  typeof act.title === 'function' ? act.title(this, this.crudResource) : act.title,
                 ]
               )
             }),

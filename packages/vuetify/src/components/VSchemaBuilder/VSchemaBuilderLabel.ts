@@ -101,12 +101,6 @@ export default Vue.extend({
                   this.onSaveLabel(this.dirtyLabel)
                 }
               },
-              change: (v: any) => {
-                if (v && v.length > 0) {
-                  this.isLabelDirty = true
-                  this.dirtyLabel = v
-                }
-              },
             },
           }),
         ]

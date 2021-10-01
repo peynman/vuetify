@@ -64,7 +64,7 @@ export default baseMixins.extend<options>().extend({
         })
       }
       return items
-    }
+    },
   },
 
   methods: {

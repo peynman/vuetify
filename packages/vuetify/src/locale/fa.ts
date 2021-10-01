@@ -111,6 +111,12 @@ export default {
       selectAll: 'انتخاب تمام موارد',
     },
   },
+  schemaBuilder: {
+    autoReactive: 'Toggle reactivity on item id change',
+    preview: 'پیش‌نمایش',
+    code: 'نمایش کد',
+    editorMode: 'Toggle editor mode in preview',
+  },
   datePickerInput: {
     input: 'از {0} تا {1}',
     startTime: 'زمان شروع',
