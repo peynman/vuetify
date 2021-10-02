@@ -82,5 +82,6 @@
   },
   "resolutions": {
     "workbox-webpack-plugin": "^5.1.3"
-  }
+  },
+  "version": "2.100.1"
 }
