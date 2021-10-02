@@ -40,7 +40,6 @@ jobs:
       - uses: codecov/codecov-action@v1
 
   deploy:
-    needs: [lint, test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startswith(github.ref, 'refs/tags/v') && github.repository_owner == 'peynman'
     steps:
