@@ -66,4 +66,62 @@ export default {
       icon: 'Rating {0} of {1}',
     },
   },
+  crud: {
+    toolbar: {
+      settings: {
+        tooltip: 'Table settings',
+        reload: 'Reload',
+        save: 'Save settings',
+        reset: 'Reset settings',
+        title: 'CRUD query settings',
+        hideColumns: 'Hide columns',
+        loadRelations: 'Relations to load',
+        itemsPerPage: 'Load number of items per page',
+        includeTrashed: 'Include trashed (deleted) items',
+      },
+      filters: {
+        tooltip: 'Query filters',
+        title: 'Filter CRUD query',
+        reload: 'Reload',
+        save: 'Save filters',
+        reset: 'Reset filters',
+      },
+      actions: {
+        tooltip: 'Actions',
+        title: 'Available CRUD actions',
+      },
+      create: {
+        tooltip: 'Create new',
+        title: 'Create new CRUD resource',
+        submit: 'Submit',
+        cancel: 'Cancel',
+        reset: 'Reset Form',
+      },
+      reload: {
+        tooltip: 'Reload query',
+      },
+      search: {
+        tooltip: 'Search',
+      },
+    },
+    pagination: {
+      total: 'Vieweing {0} of the total {1} records',
+    },
+    picker: {
+      selectAll: 'Select all records',
+    },
+  },
+  schemaBuilder: {
+    autoReactive: 'Toggle reactivity on item id change',
+    preview: 'Preview',
+    code: 'Code view',
+    editorMode: 'Toggle editor mode in preview',
+  },
+  datePickerInput: {
+    input: 'From {0} to {1}',
+    startTime: 'Start time',
+    endTime: 'End time',
+    ok: 'OK',
+    cancel: 'Cancel',
+  },
 }

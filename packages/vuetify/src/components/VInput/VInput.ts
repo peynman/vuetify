@@ -55,6 +55,7 @@ export default baseMixins.extend<options>().extend({
     loading: Boolean,
     persistentHint: Boolean,
     prependIcon: String,
+    vertical: Boolean,
     value: null as any as PropType<any>,
   },
 
@@ -157,12 +158,27 @@ export default baseMixins.extend<options>().extend({
       return this.$createElement('div', {
         staticClass: 'v-input__control',
         attrs: { title: this.attrs$.title },
-      }, [
+      },
+      [
         this.genInputSlot(),
         this.genMessages(),
       ])
     },
     genDefaultSlot () {
+      if (this.vertical) {
+        return [
+          this.$createElement('div',
+            {
+              staticClass: 'd-flex flex-column align-start flex-grow-1',
+            },
+            [
+              this.genLabel(),
+              this.$slots.default,
+            ]
+          ),
+        ]
+      }
+
       return [
         this.genLabel(),
         this.$slots.default,

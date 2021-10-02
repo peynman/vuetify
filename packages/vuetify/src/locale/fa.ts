@@ -66,4 +66,62 @@ export default {
       icon: 'Rating {0} of {1}',
     },
   },
+  crud: {
+    toolbar: {
+      settings: {
+        tooltip: 'تنظیمات جدول',
+        reload: 'بارگزاری مجدد',
+        save: 'ذخیره تنظیمات',
+        reset: 'حذف تمظیمات',
+        title: 'تنظیمات دریافت رکورد‌های این منبع',
+        hideColumns: 'پنهان سازی ستون‌های',
+        loadRelations: 'بارگزاری روابط',
+        itemsPerPage: 'بارگزاری تعداد منابع در هر صفحه',
+        includeTrashed: 'بارگزاری منابع حذف شده',
+      },
+      filters: {
+        tooltip: 'فیلترها',
+        title: 'فیلتر دریافت منابع',
+        reload: 'بارگزاری مجدد',
+        save: 'ذخیره فیلتر‌ها',
+        reset: 'حذف فیلتر‌ها',
+      },
+      actions: {
+        tooltip: 'امکانات',
+        title: 'امکانات جدول',
+      },
+      create: {
+        tooltip: 'ثبت منبع جدید',
+        title: 'ثبت منبع جدید',
+        submit: 'ارسال',
+        cancel: 'بگذریم',
+        reset: 'حذف اطلاعات وارد شده',
+      },
+      reload: {
+        tooltip: 'بارگزاری مجدد',
+      },
+      search: {
+        tooltip: 'جستجو',
+      },
+    },
+    pagination: {
+      total: 'نمایش {0} منبع از مجموع {1} میبع',
+    },
+    picker: {
+      selectAll: 'انتخاب تمام موارد',
+    },
+  },
+  schemaBuilder: {
+    autoReactive: 'Toggle reactivity on item id change',
+    preview: 'پیش‌نمایش',
+    code: 'نمایش کد',
+    editorMode: 'Toggle editor mode in preview',
+  },
+  datePickerInput: {
+    input: 'از {0} تا {1}',
+    startTime: 'زمان شروع',
+    endTime: 'زمان پایان',
+    ok: 'تایید',
+    cancel: 'بگذریم',
+  },
 }
