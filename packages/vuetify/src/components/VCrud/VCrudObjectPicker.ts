@@ -14,7 +14,7 @@ import { consoleError } from '../../util/console'
 import { VCard, VCardText, VCardTitle, VCardActions } from '../VCard'
 import EasyInteracts from '../../mixins/easyinteracts'
 import VCrudPagination from './VCrudPagination'
-import { VProgressLinear } from 'vuetify/lib'
+import { VProgressLinear } from '../VProgressLinear'
 import { mergeDeep } from '../../util/helpers'
 
 const defaultMenuProps = {

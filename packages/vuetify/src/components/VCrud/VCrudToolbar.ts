@@ -348,7 +348,7 @@ export default baseMixins.extend<options>().extend({
               {
                 staticClass: 'd-flex flex-row flex-wrap justify-start align-center',
               },
-              this.crudResource?.columns?.map?.<VNode>((col: CrudColumn) => {
+              this.crudResource?.columns?.map<VNode>((col: CrudColumn) => {
                 return this.$createElement(
                   VCheckbox,
                   {
