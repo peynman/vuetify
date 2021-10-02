@@ -2,10 +2,12 @@ import Vue, { VNode } from 'vue'
 import { AsyncComponentFactory, PropType } from 'vue/types/options'
 import { SchemaRendererComponent, EventActionType, EventActionDetails, SchemaRendererBinding } from 'types/services/schemas'
 import { cloneObjectWithParent, mergeDeep } from '../../util/helpers'
-import * as AvailableEvents from '../VSchemaBuilder/properties/Events'
+// import * as AvailableEvents from '../VSchemaBuilder/properties/Events'
 import { ScopedSlot } from 'vue/types/vnode'
 import { consoleError } from '../../util/console'
 import VSchemaBuilderAppend from '../VSchemaBuilder/VSchemaBuilderAppend'
+
+const AvailableEvents: any[] = []
 
 export default Vue.extend({
   name: 'v-schema-renderer',
