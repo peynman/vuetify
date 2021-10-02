@@ -42,7 +42,7 @@ jobs:
   deploy:
     needs: [lint, test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startswith(github.ref, 'refs/tags/v') && github.repository_owner == 'vuetifyjs'
+    if: github.event_name == 'push' && startswith(github.ref, 'refs/tags/v') && github.repository_owner == 'peynman'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
