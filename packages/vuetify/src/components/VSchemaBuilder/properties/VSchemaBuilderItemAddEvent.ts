@@ -8,7 +8,8 @@ import { VToolbar, VToolbarTitle } from '../../VToolbar'
 import { VSpacer, VCol } from '../../VGrid'
 import { VSelect } from '../../VSelect'
 import { makeRandomId } from './../../../util/helpers'
-import * as AvailableEvents from './Events'
+// import * as AvailableEvents from './Events'
+const AvailableEvents: any[] = []
 
 export interface SelectableItem {
   name: string
