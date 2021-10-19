@@ -10,10 +10,10 @@ import { VAutocomplete } from '../VAutocomplete'
 import { VBtnToggle } from '../VBtnToggle'
 import Localable from '../../mixins/localable'
 import { makeIsoDateTimeString } from '../VCrud/util/createNativeLocalFormatter'
+import { DatePickerFormatter } from 'types'
 
 const baseMixins = mixins(
   Localable,
-  VDatePicker,
   VTextField,
   /* @vue/component */
 )
@@ -27,6 +27,22 @@ export default baseMixins.extend<options>().extend({
   inheritAttrs: false,
 
   props: {
+    range: Boolean,
+    max: String,
+    min: String,
+    landscape: Boolean,
+    firstDayOfWeek: {
+      type: [String, Number],
+      default: 0,
+    },
+    localeFirstDayOfYear: {
+      type: [String, Number],
+      default: 0,
+    },
+    headerDateFormat: Function as PropType<DatePickerFormatter | undefined>,
+    monthFormat: Function as PropType<DatePickerFormatter | undefined>,
+    scrollable: Boolean,
+    headerColor: String,
     displayOptions: {
       type: Object as PropType<Intl.DateTimeFormatOptions> | undefined,
       default: undefined,
@@ -37,43 +53,14 @@ export default baseMixins.extend<options>().extend({
     },
     readonly: Boolean,
     value: {
-      type: null as any as PropType<string|string[]|Date|Date[]>,
+      type: [String, Array, Date, undefined] as PropType<string|string[]|Date|Date[]>,
     },
   },
 
   data () {
-    let fromDate = null
-    let toDate = null
-    if (this.value) {
-      if (Array.isArray(this.value)) {
-        if (this.value[0] instanceof Date) {
-          fromDate = this.value[0]
-          toDate = this.value[1]
-        } else {
-          const isoFrom = makeIsoDateTimeString(this.value[0])
-          const isoTo = makeIsoDateTimeString(this.value[1])
-          if (isoFrom) {
-            fromDate = new Date(isoFrom)
-          }
-          if (isoTo) {
-            toDate = new Date(isoTo)
-          }
-        }
-      } else {
-        if (this.value instanceof Date) {
-          fromDate = this.value
-        } else {
-          const iso = makeIsoDateTimeString(this.value)
-          if (iso) {
-            fromDate = new Date(iso)
-          }
-        }
-      }
-    }
-
     return {
-      fromDate,
-      toDate,
+      fromDate: undefined as Date | undefined,
+      toDate: undefined as Date | undefined,
       isOpened: false,
       timeIndex: 0,
       pickerIcon: this.prependInnerIcon || 'mdi-calendar',
@@ -114,10 +101,18 @@ export default baseMixins.extend<options>().extend({
     },
     timestamp (): Date|Date[]|null {
       if (this.range) {
-        return [this.fromDate, this.toDate]
-      } else {
+        if (this.fromDate && this.toDate) {
+          return [this.fromDate, this.toDate]
+        } else if (this.fromDate) {
+          return [this.fromDate]
+        } else {
+          return []
+        }
+      } else if (this.fromDate) {
         return this.fromDate
       }
+
+      return null
     },
     hours (): Array<any> {
       const hours = []
@@ -139,18 +134,73 @@ export default baseMixins.extend<options>().extend({
       }
       return minutes
     },
+    fromDateString (): String {
+      return (this.fromDate ?? new Date()).toISOString().split('T')[0]
+    },
+    toDateString (): String {
+      return (this.toDate ?? new Date()).toISOString().split('T')[0]
+    },
+    isReadonly () {
+      return true
+    },
     internalValue: {
       get (): any {
-        return this.lazyValue
+        return this.displayString
       },
       set (val: any) {
-        this.lazyValue = val
-        this.$emit('input', this.displayString)
+        this.lazyValue = this.displayString
+        this.$emit('input', val)
       },
     },
   },
 
+  watch: {
+    value: {
+      deep: true,
+      handler () {
+        this.updateFromToDate(this.value)
+      },
+    },
+  },
+
+  mounted () {
+    this.updateFromToDate(this.value)
+  },
+
   methods: {
+    updateFromToDate (value: string|Date|Date[]|string[]) {
+      if (value) {
+        if (Array.isArray(value)) {
+          if (value[0] instanceof Date) {
+            this.fromDate = value[0]
+          } else {
+            const isoFrom = makeIsoDateTimeString(value[0])
+            if (isoFrom) {
+              this.fromDate = new Date(isoFrom)
+            }
+          }
+          if (value[1] instanceof Date) {
+            this.toDate = value[1]
+          } else {
+            const isoTo = makeIsoDateTimeString(value[1])
+            if (isoTo) {
+              this.toDate = new Date(isoTo)
+            }
+          }
+        } else {
+          if (value instanceof Date) {
+            this.fromDate = this.value
+          } else {
+            const iso = makeIsoDateTimeString(value)
+            if (iso) {
+              this.fromDate = new Date(iso)
+            }
+          }
+        }
+      }
+
+      this.internalValue = this.timestamp
+    },
     isDateStringValid (date: string): Boolean {
       const d = new Date(date)
       const s = d.toString()
@@ -160,7 +210,7 @@ export default baseMixins.extend<options>().extend({
       const extras = []
 
       if (this.pickTime) {
-        const currTimeRef: Date|null = this.timeIndex === 0 ? this.fromDate : this.toDate
+        const currTimeRef: Date|undefined = this.timeIndex === 0 ? this.fromDate : this.toDate
 
         if (this.range) {
           extras.push(
@@ -240,16 +290,15 @@ export default baseMixins.extend<options>().extend({
                   on: {
                     input: (e: Number) => {
                       if (this.timeIndex === 0) {
-                        if (!this.fromDate) {
-                          this.fromDate = new Date()
-                        }
-                        this.fromDate.setHours(e.valueOf())
+                        const newDate = new Date((this.fromDate ?? new Date()).getTime())
+                        newDate.setHours(e.valueOf())
+                        this.fromDate = newDate
                       } else {
-                        if (!this.toDate) {
-                          this.toDate = new Date()
-                        }
-                        this.toDate.setHours(e.valueOf())
+                        const newDate = new Date((this.toDate ?? new Date()).getTime())
+                        newDate.setHours(e.valueOf())
+                        this.toDate = newDate
                       }
+                      this.internalValue = this.timestamp
                     },
                   },
                 },
@@ -275,16 +324,15 @@ export default baseMixins.extend<options>().extend({
                   on: {
                     input: (e: Number) => {
                       if (this.timeIndex === 0) {
-                        if (!this.fromDate) {
-                          this.fromDate = new Date()
-                        }
-                        this.fromDate.setMinutes(e.valueOf())
+                        const newDate = new Date((this.fromDate ?? new Date()).getTime())
+                        newDate.setMinutes(e.valueOf())
+                        this.fromDate = newDate
                       } else {
-                        if (!this.toDate) {
-                          this.toDate = new Date()
-                        }
-                        this.toDate.setMinutes(e.valueOf())
+                        const newDate = new Date((this.toDate ?? new Date()).getTime())
+                        newDate.setMinutes(e.valueOf())
+                        this.toDate = newDate
                       }
+                      this.internalValue = this.timestamp
                     },
                   },
                 },
@@ -334,6 +382,10 @@ export default baseMixins.extend<options>().extend({
       )
     },
     genDatePickerDialogItem (): VNode {
+      const rangeValue = [this.fromDateString]
+      if (this.toDate) {
+        rangeValue.push(this.toDateString)
+      }
       return this.$createElement(
         VDatePicker,
         {
@@ -349,28 +401,36 @@ export default baseMixins.extend<options>().extend({
             fullWidth: true,
             color: this.color,
             headerColor: this.headerColor,
-            value: this.fromDate,
+            value: this.range ? rangeValue : this.fromDateString,
           },
           on: {
             input: (ev: any) => {
               if (Array.isArray(ev)) {
-                if (!this.fromDate) {
-                  this.fromDate = new Date()
+                if (this.toDate) {
+                  const newDateFrom = new Date(Date.parse(ev[0]))
+                  if (this.fromDate && newDateFrom) {
+                    newDateFrom.setHours(this.fromDate.getHours())
+                    newDateFrom.setMinutes(this.fromDate.getMinutes())
+                  }
+                  this.fromDate = newDateFrom
+                  this.toDate = undefined
+                } else {
+                  const newDateFrom = new Date(Date.parse(ev[0]))
+                  if (this.fromDate) {
+                    newDateFrom.setHours(this.fromDate.getHours())
+                    newDateFrom.setMinutes(this.fromDate.getMinutes())
+                  }
+                  this.fromDate = newDateFrom
+                  const newDateTo = new Date(Date.parse(ev[1]))
+                  this.toDate = newDateTo
                 }
-                if (!this.toDate) {
-                  this.toDate = new Date()
-                }
-                const nvFrom = new Date(Date.parse(ev[0]))
-                const nvTo = new Date(Date.parse(ev[1]))
-
-                this.fromDate.setDate(nvFrom.getDate())
-                this.toDate.setDate(nvTo.getDate())
               } else {
-                if (!this.fromDate) {
-                  this.fromDate = new Date()
+                const newDateFrom = new Date(Date.parse(ev))
+                if (this.fromDate) {
+                  newDateFrom.setHours(this.fromDate.getHours())
+                  newDateFrom.setMinutes(this.fromDate.getMinutes())
                 }
-                const nvFrom = new Date(Date.parse(ev))
-                this.fromDate.setDate(nvFrom.getDate())
+                this.fromDate = newDateFrom
               }
               this.internalValue = this.timestamp
             },

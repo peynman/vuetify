@@ -8,7 +8,8 @@ import VSchemaBuilderAddEvent from './VSchemaBuilderItemAddEvent'
 import VSchemaRendererAddBinding from './VSchemaRendererAddBinding'
 import VSchemaRendererBinding from './VSchemaRendererBinding'
 
-import * as AvailableEvents from './Events'
+// import * as AvailableEvents from './Events'
+const AvailableEvents: any[] = []
 
 export default Vue.extend({
   name: 'v-schema-builder-item-properties',

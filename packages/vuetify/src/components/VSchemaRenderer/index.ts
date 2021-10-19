@@ -1,4 +1,5 @@
 import VSchemaRenderer from './VSchemaRenderer'
+import VFormRenderer from './VFormRenderer'
 
-export { VSchemaRenderer }
+export { VSchemaRenderer, VFormRenderer }
 export default VSchemaRenderer

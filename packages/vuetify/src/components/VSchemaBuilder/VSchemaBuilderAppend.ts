@@ -240,7 +240,7 @@ export default baseMixins.extend<options>().extend({
     },
   },
   render (h): VNode {
-    const dictionaryType = GetItemTypeSettingsFromDictionary(this.item)
+    const dictionaryType = GetItemTypeSettingsFromDictionary(this.item, this.extraTypes)
     const extras = []
     let canAddBlocks = false
     const isRoot = this.item.parent === null || this.item.parent === undefined
@@ -285,7 +285,7 @@ export default baseMixins.extend<options>().extend({
       )
 
       if (this.item.parent?.tag) {
-        const dictionaryParentType = GetItemTypeSettingsFromDictionary(this.item.parent)
+        const dictionaryParentType = GetItemTypeSettingsFromDictionary(this.item.parent, this.extraTypes)
         if (dictionaryParentType?.slots && dictionaryParentType.slots?.length > 0) {
           extras.push(this.genMenu('mdi-toy-brick-marker', 'secondary', 'Select component slot', [
             this.genChangeSlotMenuContent(),

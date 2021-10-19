@@ -15,6 +15,11 @@ export default Vue.extend({
   inheritAttrs: false,
 
   props: {
+    tag: String,
+    props: {
+      type: Object as PropType<{ [key: string]: any }>,
+      default: null,
+    },
     children: {
       type: Array as PropType<Array<SchemaRendererComponent>>,
       default: () => ([]),
@@ -61,7 +66,7 @@ export default Vue.extend({
           try {
             const defaultValue = binding.default === null ? null : JSON.parse(binding.default)
             inputBindingValues[binding.name] = defaultValue
-          } catch (error) {
+          } catch (error: any) {
             consoleError(error)
           }
         } else if (binding.type === 'promise') {
@@ -182,7 +187,7 @@ export default Vue.extend({
           try {
             // eslint-disable-next-line no-eval
             return eval(evalValue.substr(2, evalValue.length - 3))
-          } catch (error) {
+          } catch (error: any) {
             consoleError(error)
           }
         } else {
@@ -440,6 +445,7 @@ export default Vue.extend({
       const rootTag = this.genComponentTag(this)
       const clone = this.$createElement(rootTag, {
         attrs: this.attributes,
+        props: this.props,
       }, this.genComponentChildren(this, []))
 
       if (this.wrap) {
