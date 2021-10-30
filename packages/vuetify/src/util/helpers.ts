@@ -551,6 +551,31 @@ export function cloneObjectWithParentCalculate (target: any, parent: any, parent
   return target
 }
 
+export function cloneObjectWithCallbackOnKey (target: any, callback: Function, callbackKey = 'id'): any {
+  if (target === null) {
+    return null
+  }
+
+  if (Array.isArray(target)) {
+    return target.map((a: any) => cloneObjectWithCallbackOnKey(a, callback, callbackKey))
+  }
+
+  if (isObject(target)) {
+    const clone: {[key: string]: any} = {}
+    Object.entries(target).forEach((entry: any[]) => {
+      const prop = entry[0]
+      if (prop !== callbackKey) {
+        clone[prop] = cloneObjectWithCallbackOnKey(entry[1], callback, callbackKey)
+      } else {
+        clone[prop] = callback(entry[1])
+      }
+    })
+    return clone
+  }
+
+  return target
+}
+
 export function cloneObjectWithParent (target: any, parent: any, parentKey = 'parent'): any {
   if (target === null) {
     return null

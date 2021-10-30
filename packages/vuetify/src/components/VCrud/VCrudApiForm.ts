@@ -1,4 +1,4 @@
-import { ApiMethod, CrudFormInput, CrudUser } from 'types/services/crud'
+import { ApiMethod, CrudFormInput, CrudUser, CrudFormInputTab } from 'types/services/crud'
 import { SchemaRendererAgent, SchemaRendererBinding, SchemaRendererComponent } from 'types/services/schemas'
 import { PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
@@ -24,6 +24,9 @@ export default baseMixins.extend<options>().extend({
   props: {
     id: String,
     api: String,
+    title: {
+      type: String as PropType<String | undefined>,
+    },
     isAction: Boolean,
     loading: Boolean,
     crudUser: {
@@ -75,7 +78,6 @@ export default baseMixins.extend<options>().extend({
 
       return this.showForm
     },
-
     formBindings (): SchemaRendererBinding[] {
       const bindings = []
       if (this.apiMethod?.autoValidate) {
@@ -106,6 +108,9 @@ export default baseMixins.extend<options>().extend({
         })
       }
       return bindings
+    },
+    hasTabs (): Boolean {
+      return (this.apiMethod?.formTabs?.length ?? 0) > 1
     },
   },
 
@@ -161,7 +166,7 @@ export default baseMixins.extend<options>().extend({
       )
     },
     getApiFormComponents (): SchemaRendererComponent[] {
-      return this.apiMethod?.form?.map<SchemaRendererComponent>((input: CrudFormInput) => {
+      const genFormComponentFromInput = (input: CrudFormInput) => {
         const props = input.component?.props ?? {}
         if (input.rules) {
           props.rules = input.rules
@@ -169,10 +174,51 @@ export default baseMixins.extend<options>().extend({
         return {
           id: `${this.id}-${this.api}-${input.key}`,
           ...(input.component ?? {}),
-          'v-model': 'bindings.' + input.key,
+          'v-model': '$(bindings.' + input.key + ')',
           props,
         }
-      }) ?? []
+      }
+
+      if (this.hasTabs) {
+        const tabContents: SchemaRendererComponent[] = []
+        this.apiMethod?.formTabs?.forEach((tab: CrudFormInputTab, index: number) => {
+          tabContents.push({
+            tag: 'VTabItem',
+            children: this.apiMethod?.form?.filter(
+              (input: CrudFormInput) => input.tab === tab.value || (!input.tab && index === 0)
+            ).map<SchemaRendererComponent>(genFormComponentFromInput) ?? [],
+          })
+        })
+
+        return [
+          {
+            tag: 'VTabs',
+            'v-model': '$(bindings.__tabIndex)',
+            props: {
+              centered: true,
+            },
+            children: [
+              {
+                tag: 'VTabsSlider',
+              },
+              ...(this.apiMethod?.formTabs?.map((tab: CrudFormInputTab) => ({
+                tag: 'VTab',
+                children: tab.text,
+              })) ?? []),
+            ],
+          },
+          {
+            tag: 'VDivider',
+          },
+          {
+            tag: 'VTabsItems',
+            'v-model': '$(bindings.__tabIndex)',
+            children: tabContents,
+          },
+        ]
+      } else {
+        return this.apiMethod?.form?.map<SchemaRendererComponent>(genFormComponentFromInput) ?? []
+      }
     },
     getApiFormActionButtons (): SchemaRendererComponent[] {
       return [
@@ -193,9 +239,12 @@ export default baseMixins.extend<options>().extend({
         schema.tag = 'div'
       }
 
-      const title: string = typeof this.apiMethod?.title === 'function' ? this.apiMethod?.title(this, this.crudResource, this.api) : this.apiMethod?.title
+      let title: String|undefined = this.title
+      if (!title) {
+        title = typeof this.apiMethod?.title === 'function' ? this.apiMethod?.title(this, this.crudResource, this.api) : this.apiMethod?.title
+      }
       return this.genSchemaFormCard(
-        title ?? '',
+        title?.toString() ?? '',
         this.formBindings,
         schema,
         this.getApiFormActionButtons()

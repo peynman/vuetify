@@ -53,12 +53,19 @@ export interface ApiMethod {
   bindings?: SchemaRendererBinding[]
   autoValidate?: boolean
   form?: Array<CrudFormInput>
+  formTabs?: Array<CrudFormInputTab>
   actions?: SchemaRendererComponent[]
+}
+
+export interface CrudFormInputTab {
+  value: string
+  text: string
 }
 
 export interface CrudFormInput {
   key: string
   rules?: Array<Function>
+  tab?: string
   component?: SchemaRendererComponent
 }
 

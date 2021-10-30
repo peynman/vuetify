@@ -6,13 +6,16 @@ import VBtn from '../VBtn'
 import VChip from '../VChip'
 import VTextField from '../VTextField'
 import { VSpacer, VCol } from '../VGrid'
-import { VToolbar, VToolbarTitle } from '../VToolbar'
+import { VToolbar } from '../VToolbar'
 import { VTreeview } from '../VTreeview'
 import { VSelect } from '../VSelect'
 import { VDivider } from '../VDivider'
+import { VLabel } from '../VLabel'
 
 import EasyInteracts from '../../mixins/easyinteracts'
 import { consoleError } from '../../util/console'
+import { SchemaRendererComponent } from 'types/services/schemas'
+import { VSchemaRenderer } from '../VSchemaRenderer'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -20,6 +23,13 @@ const baseMixins = mixins(
 )
 interface options extends ExtractVue<typeof baseMixins> {
   $el: HTMLElement
+}
+
+export interface ItemType {
+  text: string
+  value: string
+  form?: Array<SchemaRendererComponent>
+  genNewItem (values: { [key: string]: any }): any
 }
 
 export default baseMixins.extend<options>().extend({
@@ -45,6 +55,8 @@ export default baseMixins.extend<options>().extend({
       type: String,
       default: '',
     },
+    extraTypes: null as any as PropType<Array<ItemType>|null>,
+    hideDefaultTypes: Boolean,
   },
 
   data () {
@@ -53,7 +65,7 @@ export default baseMixins.extend<options>().extend({
       if (typeof this.value === 'string') {
         try {
           objectSchema = JSON.parse(this.value)
-        } catch (error) {
+        } catch (error: any) {
           consoleError(error)
         }
       } else {
@@ -66,7 +78,91 @@ export default baseMixins.extend<options>().extend({
       add_type: null as any,
       add_name: null as any,
       add_value: null as any,
+      form_values: {},
     }
+  },
+
+  computed: {
+    availableItemTypes (): ItemType[] {
+      const types: ItemType[] = this.hideDefaultTypes ? [] : [
+        {
+          text: 'String',
+          value: 'string',
+          form: [
+            {
+              tag: 'VTextField',
+              'v-model': 'str',
+              props: {
+                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
+              },
+            },
+          ],
+          genNewItem (vals: { [key: string]: any }): any {
+            return vals.str
+          },
+        },
+        {
+          text: 'Number',
+          value: 'number',
+          form: [
+            {
+              tag: 'VTextField',
+              'v-model': 'num',
+              props: {
+                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
+                type: 'number',
+              },
+            },
+          ],
+          genNewItem (vals: { [key: string]: any }): any {
+            return vals.num
+          },
+        },
+        {
+          text: 'Boolean',
+          value: 'bool',
+          form: [
+            {
+              tag: 'VCheckbox',
+              'v-model': 'checked',
+              props: {
+                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
+              },
+            },
+          ],
+          genNewItem (vals: { [key: string]: any }): any {
+            return vals.checked
+          },
+        },
+        {
+          text: 'Array',
+          value: 'array',
+          genNewItem (vals: { [key: string]: any }): any {
+            return []
+          },
+        },
+        {
+          text: 'Object',
+          value: 'object',
+          genNewItem (vals: { [key: string]: any }): any {
+            return {}
+          },
+        },
+        {
+          text: 'Null',
+          value: 'null',
+          genNewItem (vals: { [key: string]: any }): any {
+            return null
+          },
+        },
+      ]
+
+      if (this.extraTypes) {
+        types.push(...this.extraTypes)
+      }
+
+      return types
+    },
   },
 
   methods: {
@@ -162,7 +258,7 @@ export default baseMixins.extend<options>().extend({
                   const fileHandler = e.target
                   this.objectSchema = JSON.parse(fileHandler.result)
                   this.$emit('change', this.objectSchema)
-                } catch (e) {
+                } catch (e: any) {
                   consoleError(e)
                 }
               }
@@ -198,8 +294,9 @@ export default baseMixins.extend<options>().extend({
             VTextField,
             {
               props: {
-                label: 'Item key',
+                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemKeyLabel'),
                 'hide-details': true,
+                dense: true,
               },
               on: {
                 change: (e: any) => {
@@ -216,34 +313,11 @@ export default baseMixins.extend<options>().extend({
           VSelect,
           {
             props: {
-              items: [
-                {
-                  text: 'String',
-                  value: 'string',
-                },
-                {
-                  text: 'Number',
-                  value: 'number',
-                },
-                {
-                  text: 'Boolean',
-                  value: 'bool',
-                },
-                {
-                  text: 'Array',
-                  value: 'array',
-                },
-                {
-                  text: 'Object',
-                  value: 'object',
-                },
-                {
-                  text: 'Null',
-                  value: 'null',
-                },
-              ],
-              label: 'Item type',
+              items: this.availableItemTypes,
+              label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemTypeLabel'),
               'hide-details': true,
+              returnObject: true,
+              dense: true,
             },
             on: {
               change: (e: any) => {
@@ -253,53 +327,32 @@ export default baseMixins.extend<options>().extend({
           },
         )
       )
+      properties.push(
+        this.$createElement(
+          VDivider,
+          {
+            staticClass: 'mt-3',
+          }
+        )
+      )
 
-      if (!['object', 'array', 'null'].includes(this.add_type)) {
-        if (this.add_type === 'bool') {
-          properties.push(
-            this.$createElement(
-              VSelect,
-              {
-                props: {
-                  items: [
-                    {
-                      text: 'True',
-                      value: 'true',
-                    },
-                    {
-                      text: 'False',
-                      value: 'false',
-                    },
-                  ],
-                  'hide-details': true,
-                  label: 'Item value',
-                },
-                on: {
-                  change: (e: any) => {
-                    this.add_value = e
-                  },
+      if (this.add_type) {
+        properties.push(
+          this.$createElement(
+            VSchemaRenderer,
+            {
+              props: {
+                children: this.add_type.form ?? [],
+                value: this.form_values,
+              },
+              on: {
+                input: (values: { [key: string]: any }) => {
+                  this.form_values = values
                 },
               },
-            )
+            }
           )
-        } else {
-          properties.push(
-            this.$createElement(
-              VTextField,
-              {
-                props: {
-                  'hide-details': true,
-                  label: 'Item value',
-                },
-                on: {
-                  change: (e: any) => {
-                    this.add_value = e
-                  },
-                },
-              }
-            )
-          )
-        }
+        )
       }
 
       return this.$createElement(
@@ -319,18 +372,7 @@ export default baseMixins.extend<options>().extend({
               on: {
                 click: () => {
                   if (this.add_type !== null && (Array.isArray(parent) || this.add_name !== null)) {
-                    let value: any = null
-                    if (this.add_type === 'object') {
-                      value = {}
-                    } else if (this.add_type === 'array') {
-                      value = []
-                    } else if (this.add_type === 'bool') {
-                      value = this.add_value === 'true'
-                    } else if (this.add_type === 'null') {
-                      value = null
-                    } else {
-                      value = this.add_value
-                    }
+                    const value = this.add_type.genNewItem(this.form_values)
                     if (Array.isArray(parent)) {
                       parent.push(value)
                       this.$emit('change', this.objectSchema)
@@ -342,7 +384,7 @@ export default baseMixins.extend<options>().extend({
                 },
               },
             },
-            'Add Item'
+            this.$vuetify.lang.t('$vuetify.jsonEditor.addSubmit')
           ),
         ]
       )
@@ -355,7 +397,7 @@ export default baseMixins.extend<options>().extend({
           this.genMenu(
             'mdi-plus-circle',
             'green',
-            'Add new item to root',
+            this.$vuetify.lang.t('$vuetify.jsonEditor.addTitle'),
             [this.genNewItemMenu(this.objectSchema)],
             null,
             {
@@ -424,7 +466,7 @@ export default baseMixins.extend<options>().extend({
             this.mode = this.mode === 'editor' ? 'code' : 'editor'
           }),
           this.$createElement(
-            VToolbarTitle,
+            VLabel,
             {
               props: {
                 dark: this.mode === 'code',

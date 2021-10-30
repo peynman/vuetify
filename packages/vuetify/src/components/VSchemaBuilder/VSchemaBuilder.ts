@@ -15,10 +15,12 @@ import VSchemaBuilderAppend from './VSchemaBuilderAppend'
 
 import { SchemaRendererComponent } from 'types/services/schemas'
 
-import { cloneObjectWithParentCalculate, cloneObjectWithParentRemove, makeRandomId } from '../../util/helpers'
+import { cloneObjectWithCallbackOnKey, cloneObjectWithParentCalculate, cloneObjectWithParentRemove, makeRandomId } from '../../util/helpers'
 import { consoleError } from '../../util/console'
 import EasyInteracts from '../../mixins/easyinteracts'
 import { VTextarea } from '../VTextarea'
+import { VWindow } from '../VWindow'
+import { VSheet } from '../VSheet'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -79,6 +81,16 @@ export default baseMixins.extend<options>().extend({
   computed: {
     generatedSchema (): Partial<SchemaRendererComponent> {
       return cloneObjectWithParentRemove(this.rootChild)
+    },
+    recalculateIdOnPasteFunction () {
+      return (id: string) => {
+        const _index = id.lastIndexOf('_')
+        if (_index >= 0) {
+          return id.substr(0, _index) + '_' + makeRandomId(5)
+        } else {
+          return id + '_' + makeRandomId(5)
+        }
+      }
     },
   },
 
@@ -189,6 +201,56 @@ export default baseMixins.extend<options>().extend({
     },
     onRefreshValues () {
 
+    },
+    onCopyItem (item: SchemaRendererComponent) {
+      navigator.clipboard.writeText(JSON.stringify(cloneObjectWithParentRemove(item)))
+    },
+    onPasteItemAsSibling (item: SchemaRendererComponent) {
+      navigator.clipboard.readText().then((str: string) => {
+        try {
+          const obj = cloneObjectWithParentCalculate(
+            cloneObjectWithCallbackOnKey(
+              JSON.parse(str),
+              this.recalculateIdOnPasteFunction
+            ),
+            null
+          )
+          if (item.parent && Array.isArray(item.parent.children) && item.parent.children.length) {
+            obj.parent = item.parent
+            this.$set(item.parent.children, item.parent.children?.length, obj)
+            this.$emit('input', this.generatedSchema)
+          }
+        } catch (e: any) {
+          consoleError(e)
+        }
+      }).catch((e: any) => {
+        consoleError(e)
+      })
+    },
+    onPasteItemAsChild (item: SchemaRendererComponent) {
+      navigator.clipboard.readText().then((str: string) => {
+        try {
+          const obj = cloneObjectWithParentCalculate(
+            cloneObjectWithCallbackOnKey(
+              JSON.parse(str),
+              this.recalculateIdOnPasteFunction
+            ),
+            null
+          )
+          if (!item.children) {
+            this.$set(item, 'children', [])
+          }
+          if (Array.isArray(item.children)) {
+            obj.parent = item
+            this.$set(item.children, item.children.length, obj)
+            this.$emit('input', this.generatedSchema)
+          }
+        } catch (e: any) {
+          consoleError(e)
+        }
+      }).catch((e: any) => {
+        consoleError(e)
+      })
     },
     onDownload () {
       const treeview = this.generatedSchema
@@ -466,6 +528,9 @@ export default baseMixins.extend<options>().extend({
                     'change-slots': this.onChangeSlots,
                     'add-child': this.onAddChild,
                     'remove-item': this.onRemoveItem,
+                    'copy-item': this.onCopyItem,
+                    'paste-siblint': this.onPasteItemAsSibling,
+                    'paste-child': this.onPasteItemAsChild,
                   },
                 }),
               ]
@@ -505,7 +570,7 @@ export default baseMixins.extend<options>().extend({
             'add-child': this.onAddChild,
             'remove-item': this.onRemoveItem,
           },
-        },
+        }
       )
     },
     genCoder (): VNode {

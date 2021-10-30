@@ -254,6 +254,8 @@ export default Vue.extend({
 
       const eventsMap: { [key: string]: string } = {
         VCheckbox: 'change',
+        VTabs: 'change',
+        VTabsItems: 'change',
       }
 
       if (desc.tag && eventsMap[desc.tag]) {

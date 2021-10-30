@@ -124,4 +124,11 @@ export default {
     ok: 'تایید',
     cancel: 'بگذریم',
   },
+  jsonEditor: {
+    addTitle: ' افزودن آیتم جدید',
+    itemTypeLabel: 'نوع آیتم',
+    itemKeyLabel: 'کلید آیتم',
+    itemValueLabel: 'مقدار آیتم',
+    addSubmit: 'اضافه‌کن',
+  },
 }

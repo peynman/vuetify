@@ -61,6 +61,8 @@ export interface TagAttribute {
   value?: TagAttributeValue
   cantBind?: boolean
   autoBind?: boolean
+  factory?: AsyncComponentFactory
+  tag?: string
 }
 
 export interface TagSlotProperties {

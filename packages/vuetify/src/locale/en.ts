@@ -124,4 +124,11 @@ export default {
     ok: 'OK',
     cancel: 'Cancel',
   },
+  jsonEditor: {
+    addTitle: 'Add new item',
+    itemTypeLabel: 'Item type',
+    itemKeyLabel: 'Item key',
+    itemValueLabel: 'Item value',
+    addSubmit: 'Add',
+  },
 }

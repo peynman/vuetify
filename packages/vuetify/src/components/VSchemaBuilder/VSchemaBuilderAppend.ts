@@ -238,6 +238,51 @@ export default baseMixins.extend<options>().extend({
         }, avMoves),
       ])
     },
+    genItemPasteMenuContent (): VNode {
+      const avMoves = [
+        {
+          id: 0,
+          name: 'sibling',
+          title: 'Paste as sibling',
+          icon: 'mdi-source-pull',
+        },
+        {
+          id: 1,
+          name: 'child',
+          title: 'Paste as child',
+          icon: 'mdi-source-merge',
+        },
+      ].map((move: any) => {
+        return this.$createElement(VListItem, {
+          props: {
+            value: move.id,
+          },
+          on: {
+            click: (e: MouseEvent) => {
+              this.$emit('paste-' + move.name, this.item)
+            },
+          },
+        }, [
+          this.$createElement(VListItemIcon, {}, [
+            this.$createElement(VIcon, {}, move.icon),
+          ]),
+          this.$createElement(VListItemContent, {}, [
+            this.$createElement(VListItemTitle, {}, [move.title]),
+          ]),
+        ])
+      })
+      return this.$createElement(VList, {
+        props: {
+          dense: true,
+        },
+      }, [
+        this.$createElement(VListItemGroup, {
+          props: {
+
+          },
+        }, avMoves),
+      ])
+    },
   },
   render (h): VNode {
     const dictionaryType = GetItemTypeSettingsFromDictionary(this.item, this.extraTypes)
@@ -254,16 +299,6 @@ export default baseMixins.extend<options>().extend({
 
     if (!isRoot) {
       extras.push(
-        this.genMenu('mdi-arrow-up-down', 'primary', 'Move #' + this.item.id, [this.genItemMoveMenuContent()], null, {
-          'close-on-content-click': false,
-        }, {
-          'x-small': true,
-          iconProps: {
-            'x-small': true,
-          },
-        })
-      )
-      extras.push(
         this.genIconButton('mdi-content-copy', 'primary', (e: any) => {
           this.$emit('copy-item', this.item)
         }, {
@@ -274,8 +309,8 @@ export default baseMixins.extend<options>().extend({
         })
       )
       extras.push(
-        this.genIconButton('mdi-content-paste', 'warning', (e: any) => {
-          this.$emit('paste-item', this.item)
+        this.genMenu('mdi-content-paste', 'warning', 'Paste', [this.genItemPasteMenuContent()], null, {
+          'close-on-content-click': false,
         }, {
           'x-small': true,
           iconProps: {
@@ -283,7 +318,16 @@ export default baseMixins.extend<options>().extend({
           },
         })
       )
-
+      extras.push(
+        this.genMenu('mdi-arrow-up-down', 'primary', 'Move #' + this.item.id, [this.genItemMoveMenuContent()], null, {
+          'close-on-content-click': false,
+        }, {
+          'x-small': true,
+          iconProps: {
+            'x-small': true,
+          },
+        })
+      )
       if (this.item.parent?.tag) {
         const dictionaryParentType = GetItemTypeSettingsFromDictionary(this.item.parent, this.extraTypes)
         if (dictionaryParentType?.slots && dictionaryParentType.slots?.length > 0) {
@@ -304,6 +348,17 @@ export default baseMixins.extend<options>().extend({
         this.genMenu('mdi-toy-brick-remove', 'red', 'Remove item #' + this.item.id + '?', this.genRemoveItemMenuContent(() => {
           this.$emit('remove-item', this.item)
         }), null, {}, {
+          'x-small': true,
+          iconProps: {
+            'x-small': true,
+          },
+        })
+      )
+    } else {
+      extras.push(
+        this.genIconButton('mdi-content-paste', 'warning', (e: any) => {
+          this.$emit('paste-child', this.item)
+        }, {
           'x-small': true,
           iconProps: {
             'x-small': true,

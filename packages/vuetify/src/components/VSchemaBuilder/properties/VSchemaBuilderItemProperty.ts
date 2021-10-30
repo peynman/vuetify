@@ -41,6 +41,7 @@ export default baseMixins.extend<options>().extend({
 
   data () {
     return {
+      asyncComponents: {} as { [key: string]: any },
       binded: this.value?.startsWith?.('$') || (this.attribute.autoBind && this.value),
     }
   },
@@ -170,46 +171,66 @@ export default baseMixins.extend<options>().extend({
               },
             }
           )
-        default:
-          if (this.attribute.name === 'elevation') {
+        case 'custom':
+          if (this.attribute.tag) {
+            if (!this.asyncComponents[this.attribute.tag]) {
+              this.asyncComponents[this.attribute.tag] = this.attribute.factory
+            }
             return this.$createElement(
-              VSlider,
+              this.asyncComponents[this.attribute.tag],
               {
                 props: {
                   label: this.attribute.name,
                   hint: this.attribute.description,
-                  showHint: true,
-                  'persistent-hint': true,
-                  min: 0,
-                  max: 24,
                   value: this.value,
                 },
                 on: {
-                  change: (e: any) => {
-                    this.$emit('change', e)
-                  },
-                },
-              }
-            )
-          } else {
-            return this.$createElement(
-              VTextField,
-              {
-                props: {
-                  label: this.attribute.name,
-                  hint: this.attribute.description,
-                  showHint: true,
-                  'persistent-hint': true,
-                  value: this.value,
-                },
-                on: {
-                  change: (e: any) => {
+                  input: (e: any) => {
                     this.$emit('change', e)
                   },
                 },
               }
             )
           }
+      }
+      if (this.attribute.name === 'elevation') {
+        return this.$createElement(
+          VSlider,
+          {
+            props: {
+              label: this.attribute.name,
+              hint: this.attribute.description,
+              showHint: true,
+              'persistent-hint': true,
+              min: 0,
+              max: 24,
+              value: this.value,
+            },
+            on: {
+              change: (e: any) => {
+                this.$emit('change', e)
+              },
+            },
+          }
+        )
+      } else {
+        return this.$createElement(
+          VTextField,
+          {
+            props: {
+              label: this.attribute.name,
+              hint: this.attribute.description,
+              showHint: true,
+              'persistent-hint': true,
+              value: this.value,
+            },
+            on: {
+              change: (e: any) => {
+                this.$emit('change', e)
+              },
+            },
+          }
+        )
       }
     },
 
