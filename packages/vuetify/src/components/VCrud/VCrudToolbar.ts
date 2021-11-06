@@ -23,6 +23,8 @@ import VCrudRelationsList from './VCrudRelationsList'
 import { VTab, VTabs, VTabsSlider } from '../VTabs'
 import VCrudApiForm from './VCrudApiForm'
 import { mergeDeep } from '../../util/helpers'
+import { SchemaRendererAgent } from 'types/services/schemas'
+import { VBtnToggle } from '../VBtnToggle'
 
 const baseMixins = mixins(
   EasyInteracts,
@@ -84,7 +86,9 @@ export default baseMixins.extend<options>().extend({
     },
     dialogProps: {
       type: Object,
-      default: () => ({}),
+      default: () => ({
+        maxWidth: 766,
+      }),
     },
     crudUser: {
       type: Object as PropType<CrudUser> | undefined,
@@ -117,7 +121,7 @@ export default baseMixins.extend<options>().extend({
       actionsTab: 0,
       actionFormValue: {} as { [key: string]: any },
       filtersFormValue: mergeDeep({}, this.valueFilters ?? {}) as { [key: string]: any },
-      settingsForm: mergeDeep({}, this.valueSettings ?? {}) as CrudTableSettings,
+      settingsFormValue: mergeDeep({}, this.valueSettings ?? {}) as CrudTableSettings,
     }
   },
 
@@ -145,7 +149,7 @@ export default baseMixins.extend<options>().extend({
     },
     hasActions (): Boolean {
       return (Object.keys(this.crudResource?.actions ?? {})
-        .filter((ak: string) => !this.crudResource?.actions?.[ak].batched).length ?? 0) > 0 && this.showActions !== false
+        .filter((ak: string) => this.crudResource?.actions?.[ak].batched).length ?? 0) > 0 && this.showActions !== false
     },
     hasFilters (): Boolean {
       return (this.crudResource?.api?.query?.form?.length ?? 0) > 0 && this.showFilters !== false
@@ -179,7 +183,7 @@ export default baseMixins.extend<options>().extend({
 
   watch: {
     valueSettings () {
-      this.settingsForm = mergeDeep({}, this.valueSettings)
+      this.settingsFormValue = mergeDeep({}, this.valueSettings)
     },
     valueFilters () {
       this.filtersFormValue = mergeDeep({}, this.valueFilters)
@@ -187,14 +191,17 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
+    emitReload (search: any = null) {
+      this.$emit('reload', this.crudResource, this.settingsFormValue, this.filtersFormValue, search)
+    },
     genDialog (activator: Function, visible: boolean, onVisibleChanged: Function, content: VNode[], props = {}): VNode {
       return this.$createElement(
         VDialog,
         {
           props: {
             value: visible,
-            ...(this.dialogProps ?? {}),
             ...props,
+            ...(this.dialogProps ?? {}),
           },
           scopedSlots: {
             activator: (props: any) => {
@@ -273,17 +280,33 @@ export default baseMixins.extend<options>().extend({
               {
                 tag: 'VBtn',
                 props: {
+                  color: 'primary',
+                  dense: true,
+                  dark: true,
+                },
+                on: {
+                  click: (renderer: SchemaRendererAgent) => {
+                    this.filtersFormValue = renderer.getBindingValues()
+                    this.emitReload()
+                  },
+                },
+                children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.reload'),
+              },
+              {
+                tag: 'VSpacer',
+              },
+              {
+                tag: 'VBtn',
+                props: {
                   color: 'secondary',
                   dense: true,
                   dark: true,
                   loading: this.savingFilters,
-                  disabled: !this.filtersFormValue.valid,
                 },
                 on: {
                   click: () => {
                     this.savingFilters = true
                     this.$emit('save-filters', this.crudResource, this.filtersFormValue, () => {
-                      this.filtersDialog = false
                       this.savingFilters = false
                       this.expandMode = ''
                     })
@@ -297,12 +320,14 @@ export default baseMixins.extend<options>().extend({
                   color: 'secondary',
                   dense: true,
                   dark: true,
+                  disabled: this.savingFilters,
                 },
                 on: {
                   click: () => {
-                    this.settingsDialog = false
-                    this.expandMode = ''
-                    this.$emit('reset-filters', this.crudResource)
+                    this.$emit('reset-filters', this.crudResource, (filters: { [key: string]: any }) => {
+                      this.filtersFormValue = filters
+                      this.expandMode = ''
+                    })
                   },
                 },
                 children: this.$vuetify.lang.t('$vuetify.crud.toolbar.filters.reset'),
@@ -320,16 +345,80 @@ export default baseMixins.extend<options>().extend({
             props: {
               label: this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.itemsPerPage'),
               dense: true,
-              value: this.settingsForm.perPage,
+              value: this.settingsFormValue.perPage,
               items: this.itemsPerPageOptions,
               'hide-details': true,
             },
             on: {
               change: (e: any) => {
-                this.settingsForm.perPage = e
+                this.$set(this.settingsFormValue, 'perPage', e)
               },
             },
           }
+        ),
+        this.$createElement(
+          'div',
+          {
+            staticClass: 'd-flex flex-row align-center',
+          },
+          [
+            this.$createElement(
+              VSelect,
+              {
+                props: {
+                  label: this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.sortBy'),
+                  items: this.crud.columns?.filter((c: CrudColumn) => c.sortable).map((c: CrudColumn) => ({
+                    text: c.title,
+                    value: c.name,
+                  })),
+                  value: this.settingsFormValue.sortBy,
+                  clearable: true,
+                },
+                on: {
+                  change: (e: any) => {
+                    this.$set(this.settingsFormValue, 'sortBy', e)
+                  },
+                },
+              },
+            ),
+            this.$createElement(
+              VBtnToggle,
+              {
+                staticClass: 'ms-2',
+                props: {
+                  value: this.settingsFormValue.sortDesc ? 1 : 0,
+                  dense: true,
+                },
+                on: {
+                  change (e: any) {
+
+                  },
+                },
+              },
+              [
+                this.$createElement(
+                  VBtn,
+                  {
+                    props: {
+                      dense: true,
+                      small: true,
+                    },
+                  },
+                  this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.sortAsc')
+                ),
+                this.$createElement(
+                  VBtn,
+                  {
+                    props: {
+                      dense: true,
+                      small: true,
+                    },
+                  },
+                  this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.sortDesc')
+                ),
+              ]
+            ),
+          ]
         ),
         this.$createElement(
           VCol,
@@ -356,20 +445,20 @@ export default baseMixins.extend<options>().extend({
                     props: {
                       dense: true,
                       label: col.title,
-                      inputValue: this.settingsForm.hideColumns?.includes(col.name),
+                      inputValue: this.settingsFormValue.hideColumns?.includes(col.name),
                       'hide-details': true,
                     },
                     on: {
                       change: (c: boolean) => {
-                        if (!this.settingsForm.hideColumns) {
-                          this.settingsForm.hideColumns = []
+                        if (!this.settingsFormValue.hideColumns) {
+                          this.$set(this.settingsFormValue, 'hideColumns', [])
                         }
-                        if (c && !this.settingsForm.hideColumns?.includes(col.name)) {
-                          this.settingsForm.hideColumns?.push(col.name)
+                        if (c && !this.settingsFormValue.hideColumns?.includes(col.name)) {
+                          this.settingsFormValue.hideColumns?.push(col.name)
                         } else if (!c) {
-                          const index = this.settingsForm.hideColumns?.indexOf(col.name)
+                          const index = this.settingsFormValue.hideColumns?.indexOf(col.name) ?? -1
                           if (index >= 0) {
-                            this.settingsForm.hideColumns?.splice(index, 1)
+                            this.settingsFormValue.hideColumns?.splice(index, 1)
                           }
                         }
                       },
@@ -386,11 +475,11 @@ export default baseMixins.extend<options>().extend({
             props: {
               crud: this.crudResource,
               label: this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.loadRelations'),
-              value: this.settingsForm.loadRelations,
+              value: this.settingsFormValue.loadRelations,
             },
             on: {
               change: (relations: any) => {
-                this.settingsForm.loadRelations = relations
+                this.$set(this.settingsFormValue, 'loadRelations', relations)
               },
             },
           },
@@ -400,11 +489,11 @@ export default baseMixins.extend<options>().extend({
           {
             props: {
               label: this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.includeTrashed'),
-              inputValue: this.settingsForm.includeTrashed,
+              inputValue: this.settingsFormValue.includeTrashed,
             },
             on: {
               change: (e: boolean) => {
-                this.settingsForm.includeTrashed = e
+                this.$set(this.settingsFormValue, 'includeTrashed', e)
               },
             },
           },
@@ -414,17 +503,39 @@ export default baseMixins.extend<options>().extend({
           VBtn,
           {
             props: {
+              color: 'primary',
+              dense: true,
+              dark: true,
+            },
+            on: {
+              click: () => {
+                this.settingsDialog = false
+                this.expandMode = ''
+                this.emitReload()
+              },
+            },
+          },
+          this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.reload'),
+        ),
+        this.$createElement(
+          VSpacer,
+        ),
+
+        this.$createElement(
+          VBtn,
+          {
+            props: {
               color: 'secondary',
               dense: true,
               dark: true,
               loading: this.savingSettings,
+              disabled: this.savingSettings,
             },
             on: {
               click: () => {
                 this.savingSettings = true
-                this.$emit('save-settings', this.crudResource, this.settingsForm, () => {
+                this.$emit('save-settings', this.crudResource, this.settingsFormValue, () => {
                   this.savingSettings = false
-                  this.settingsDialog = false
                   this.expandMode = ''
                 })
               },
@@ -439,34 +550,18 @@ export default baseMixins.extend<options>().extend({
               color: 'secondary',
               dense: true,
               dark: true,
+              disabled: this.savingSettings,
             },
             on: {
               click: () => {
-                this.settingsDialog = false
-                this.expandMode = ''
-                this.$emit('reset-settings', this.crudResource)
+                this.$emit('reset-settings', this.crudResource, (settings: { [key: string]: any }) => {
+                  this.expandMode = ''
+                  this.settingsFormValue = settings
+                })
               },
             },
           },
           this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.reset'),
-        ),
-        this.$createElement(
-          VBtn,
-          {
-            props: {
-              color: 'primary',
-              dense: true,
-              dark: true,
-            },
-            on: {
-              click: () => {
-                this.settingsDialog = false
-                this.expandMode = ''
-                this.$emit('reload', this.crudResource, this.filtersFormValue, this.settingsForm, null)
-              },
-            },
-          },
-          this.$vuetify.lang.t('$vuetify.crud.toolbar.settings.reload'),
         ),
       ])
     },
@@ -558,13 +653,12 @@ export default baseMixins.extend<options>().extend({
               },
               keydown: (e: KeyboardEvent) => {
                 if (e.key === 'Enter' && this.searchTerm && this.searchTerm.length > 1) {
-                  this.$emit('reload', this.crudResource, this.settingsForm, this.filtersFormValue, this.searchTerm)
+                  this.emitReload(this.searchTerm)
                 }
               },
             },
           },
         ),
-
       ]
     },
     getCommonToolbarTools (): VNode[] {
@@ -577,7 +671,7 @@ export default baseMixins.extend<options>().extend({
             (on: any) =>
               this.genIconButton('mdi-refresh', 'secondary',
                 () => {
-                  this.$emit('reload', this.crudResource, this.settingsForm, this.filtersFormValue, null)
+                  this.emitReload()
                 },
                 {
                   loading: this.loading,
@@ -659,7 +753,11 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.createDialog = visible
             },
-            [this.genCreateForm()]
+            [
+              this.genCreateForm(),
+            ],
+            {
+            }
           ),
         )
       }
@@ -687,7 +785,11 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.filtersDialog = visible
             },
-            [this.genFiltersForm()]
+            [
+              this.genFiltersForm(),
+            ],
+            {
+            }
           ),
         )
       }
@@ -716,7 +818,11 @@ export default baseMixins.extend<options>().extend({
             (visible: boolean) => {
               this.settingsDialog = visible
             },
-            [this.genSettingsForm()]
+            [
+              this.genSettingsForm(),
+            ],
+            {
+            }
           ),
         )
       }
@@ -776,7 +882,7 @@ export default baseMixins.extend<options>().extend({
         toolbarTools.push(this.$scopedSlots['prepend-tools']({
           crud: this.crudResource,
           user: this.crudUser,
-          settings: this.settingsForm,
+          settings: this.settingsFormValue,
           filters: this.filtersFormValue,
           search: this.searchTerm,
           mode: this.toolbarMode,

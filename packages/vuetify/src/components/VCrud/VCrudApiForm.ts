@@ -222,8 +222,11 @@ export default baseMixins.extend<options>().extend({
     },
     getApiFormActionButtons (): SchemaRendererComponent[] {
       return [
-        ...(this.extraActions ?? []),
         ...(this.apiMethod?.actions ?? []),
+        ...((this.apiMethod?.actions?.length ?? 0) > 0 ? [{
+          tag: 'VSpacer',
+        }] : []),
+        ...(this.extraActions ?? []),
       ]
     },
     genApiForm (): VNode {

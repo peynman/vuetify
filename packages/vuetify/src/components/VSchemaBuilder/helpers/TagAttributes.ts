@@ -57,6 +57,56 @@ export const VSchemaBuilderStandardTagAttributes: TagAttribute[] = [
     autoBind: true,
   },
   {
+    name: 'hide-xl',
+    description: 'Should component be hidden on extra large and greater breakpoints.',
+    default: false,
+    value: {
+      kind: 'expression',
+      type: 'boolean',
+    },
+    cantBind: true,
+  },
+  {
+    name: 'hide-lg',
+    description: 'Should component be hidden on extra large breakpoints.',
+    default: false,
+    value: {
+      kind: 'expression',
+      type: 'boolean',
+    },
+    cantBind: true,
+  },
+  {
+    name: 'hide-md',
+    description: 'Should component be hidden on medium breakpoints.',
+    default: false,
+    value: {
+      kind: 'expression',
+      type: 'boolean',
+    },
+    cantBind: true,
+  },
+  {
+    name: 'hide-sm',
+    description: 'Should component be hidden on small breakpoints.',
+    default: false,
+    value: {
+      kind: 'expression',
+      type: 'boolean',
+    },
+    cantBind: true,
+  },
+  {
+    name: 'hide-xs',
+    description: 'Should component be hidden on extra small breakpoints.',
+    default: false,
+    value: {
+      kind: 'expression',
+      type: 'boolean',
+    },
+    cantBind: true,
+  },
+  {
     name: 'priority',
     description: 'Sets this components pririty on parent rendering order',
     default: 0,

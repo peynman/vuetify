@@ -19,8 +19,6 @@ import { cloneObjectWithCallbackOnKey, cloneObjectWithParentCalculate, cloneObje
 import { consoleError } from '../../util/console'
 import EasyInteracts from '../../mixins/easyinteracts'
 import { VTextarea } from '../VTextarea'
-import { VWindow } from '../VWindow'
-import { VSheet } from '../VSheet'
 
 const baseMixins = mixins(
   EasyInteracts

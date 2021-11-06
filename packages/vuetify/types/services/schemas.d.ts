@@ -20,6 +20,11 @@ export interface SchemaRendererComponent extends VNodeData {
   'v-model'?: string
   'v-model-property-name'?: string
   'v-model-event'?: string
+  'hide-xl'?: boolean
+  'hide-lg'?: boolean
+  'hide-md'?: boolean
+  'hide-sm'?: boolean
+  'hide-xs'?: boolean
   factory?: AsyncComponentFactory
 }
 
@@ -63,6 +68,7 @@ export interface TagAttribute {
   autoBind?: boolean
   factory?: AsyncComponentFactory
   tag?: string
+  props?: Object | Function
 }
 
 export interface TagSlotProperties {

@@ -167,11 +167,11 @@ export default baseMixins.extend<options>().extend({
             'actions-closed': (crud: CrudResource) => {
               this.showActionsSelect = false
             },
-            'reset-settings': (crud: CrudResource) => {
-              this.$emit('reset-settings', crud)
+            'reset-settings': (crud: CrudResource, callback: Function) => {
+              this.$emit('reset-settings', crud, callback)
             },
-            'reset-filters': (crud: CrudResource) => {
-              this.$emit('reset-filters', crud)
+            'reset-filters': (crud: CrudResource, callback: Function) => {
+              this.$emit('reset-filters', crud, callback)
             },
             'save-settings': (crud: CrudResource, settings: CrudTableSettings, callback: Function) => {
               this.$emit('save-settings', crud, settings, callback)

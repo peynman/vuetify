@@ -86,7 +86,7 @@ export default Vue.extend({
           },
           on: {
             change: (e: any) => {
-              this.itemProps[prop.name] = e
+              this.$set(this.itemProps, prop.name, e)
               this.$emit('change-props', this.itemProps)
             },
           },
@@ -105,7 +105,7 @@ export default Vue.extend({
           },
           on: {
             change: (e: any) => {
-              this.itemAttributes[attr.name] = e
+              this.$set(this.itemAttributes, attr.name, e)
               this.$emit('change-attributes', this.itemAttributes)
             },
           },
@@ -125,7 +125,7 @@ export default Vue.extend({
             change: (details: { [key: string]: any }) => {
               if (this.itemEvents[event.event.name]) {
                 const index = this.itemEvents[event.event.name].indexOf(event)
-                this.itemEvents[event.event.name][index].details = details
+                this.$set(this.itemEvents[event.event.name], index, { details })
                 this.$emit('change-events', this.itemEvents)
               }
             },

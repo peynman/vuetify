@@ -15025,6 +15025,19 @@ export default {
               },
             },
             {
+              name: 'xs',
+              description: 'Changes the number of columns on very small breakpoints.',
+              default: 'false',
+              value: {
+                kind: 'expression',
+                type: [
+                  'boolean',
+                  'string',
+                  'number',
+                ],
+              },
+            },
+            {
               name: 'offset',
               description: 'Sets the default offset for the column.',
               default: 'undefined',

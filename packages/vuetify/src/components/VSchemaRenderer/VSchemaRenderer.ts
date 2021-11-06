@@ -225,7 +225,9 @@ export default Vue.extend({
           const slotName: string = entry[0]
           const slotRenderables: SchemaRendererComponent[] = entry[1]
           scopedSlots[slotName] = (...slotInputBindings: any) => {
-            return slotRenderables.map((c: SchemaRendererComponent) => this.genComponent(c, slotInputBindings))
+            return slotRenderables
+              .filter((c: SchemaRendererComponent) => this.shouldRenderComponent(c))
+              .map((c: SchemaRendererComponent) => this.genComponent(c, slotInputBindings))
               .reduce((acc, val) => acc.concat(val), [])
           }
         })
@@ -381,6 +383,13 @@ export default Vue.extend({
         return desc.tag
       }
     },
+    shouldRenderComponent (desc: SchemaRendererComponent): boolean {
+      return (!desc['hide-xl'] || desc['hide-xl'] !== this.$vuetify.breakpoint.xl) &&
+        (!desc['hide-lg'] || desc['hide-lg'] !== this.$vuetify.breakpoint.lg) &&
+        (!desc['hide-md'] || desc['hide-md'] !== this.$vuetify.breakpoint.md) &&
+        (!desc['hide-sm'] || desc['hide-sm'] !== this.$vuetify.breakpoint.sm) &&
+        (!desc['hide-xs'] || desc['hide-xs'] !== this.$vuetify.breakpoint.xs)
+    },
     genComponentChildren (desc: SchemaRendererComponent, argsBindings: any = null): VNode[] {
       const children: any[] = []
 
@@ -393,10 +402,12 @@ export default Vue.extend({
             .sort(this.getSortFunction())
             .forEach(c => {
               if (!c.slotDetails || c.slotDetails === 'default') {
-                children.push(...this.genComponent(c, argsBindings))
+                if (this.shouldRenderComponent(c)) {
+                  children.push(...this.genComponent(c, argsBindings))
+                }
               } else if (typeof c.slotDetails === 'object') {
                 const detailedSlot: any = c.slotDetails
-                if (!detailedSlot.scoped) {
+                if (!detailedSlot.scoped && this.shouldRenderComponent(c)) {
                   children.push(this.$createElement('template', { slot: detailedSlot.slot }, this.genComponent(c, argsBindings)))
                 }
               }

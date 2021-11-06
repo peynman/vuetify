@@ -105,8 +105,6 @@ export default baseMixins.extend<options>().extend({
           return [this.fromDate, this.toDate]
         } else if (this.fromDate) {
           return [this.fromDate]
-        } else {
-          return []
         }
       } else if (this.fromDate) {
         return this.fromDate
@@ -145,10 +143,14 @@ export default baseMixins.extend<options>().extend({
     },
     internalValue: {
       get (): any {
-        return this.displayString
+        return this.lazyValue
       },
       set (val: any) {
-        this.lazyValue = this.displayString
+        if (val) {
+          this.lazyValue = this.displayString
+        } else {
+          this.lazyValue = null
+        }
         this.$emit('input', val)
       },
     },
@@ -168,25 +170,32 @@ export default baseMixins.extend<options>().extend({
   },
 
   methods: {
+    updateFromDateRange (value: string[]|Date[]) {
+      if (value[0] instanceof Date) {
+        this.fromDate = value[0]
+      } else {
+        const isoFrom = makeIsoDateTimeString(value[0])
+        if (isoFrom) {
+          this.fromDate = new Date(isoFrom)
+        } else {
+          this.fromDate = undefined
+        }
+      }
+      if (value[1] instanceof Date) {
+        this.toDate = value[1]
+      } else {
+        const isoTo = makeIsoDateTimeString(value[1])
+        if (isoTo) {
+          this.toDate = new Date(isoTo)
+        } else {
+          this.toDate = undefined
+        }
+      }
+    },
     updateFromToDate (value: string|Date|Date[]|string[]) {
       if (value) {
         if (Array.isArray(value)) {
-          if (value[0] instanceof Date) {
-            this.fromDate = value[0]
-          } else {
-            const isoFrom = makeIsoDateTimeString(value[0])
-            if (isoFrom) {
-              this.fromDate = new Date(isoFrom)
-            }
-          }
-          if (value[1] instanceof Date) {
-            this.toDate = value[1]
-          } else {
-            const isoTo = makeIsoDateTimeString(value[1])
-            if (isoTo) {
-              this.toDate = new Date(isoTo)
-            }
-          }
+          this.updateFromDateRange(value)
         } else {
           if (value instanceof Date) {
             this.fromDate = this.value
@@ -196,7 +205,17 @@ export default baseMixins.extend<options>().extend({
               this.fromDate = new Date(iso)
             }
           }
+          this.toDate = undefined
         }
+      } else {
+        this.fromDate = undefined
+        this.toDate = undefined
+      }
+
+      if (this.fromDate && this.toDate && this.fromDate.getTime() > this.toDate.getTime()) {
+        const temp = this.fromDate
+        this.fromDate = this.toDate
+        this.toDate = temp
       }
 
       this.internalValue = this.timestamp

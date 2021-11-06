@@ -176,6 +176,8 @@ export default baseMixins.extend<options>().extend({
             if (!this.asyncComponents[this.attribute.tag]) {
               this.asyncComponents[this.attribute.tag] = this.attribute.factory
             }
+            const props = typeof this.attribute.props === 'function'
+              ? this.attribute.props(this) : this.attribute.props ?? {}
             return this.$createElement(
               this.asyncComponents[this.attribute.tag],
               {
@@ -183,6 +185,7 @@ export default baseMixins.extend<options>().extend({
                   label: this.attribute.name,
                   hint: this.attribute.description,
                   value: this.value,
+                  ...(props ?? {}),
                 },
                 on: {
                   input: (e: any) => {

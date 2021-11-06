@@ -111,6 +111,8 @@ export interface CrudTableSettings {
   includeTrashed?: Boolean
   hideColumns?: Array<string>
   loadRelations?: { [key: string]: Array<string>|string }
+  sortBy?: string
+  sortDesc?: boolean
 }
 
 export function CrudQueryLoader (

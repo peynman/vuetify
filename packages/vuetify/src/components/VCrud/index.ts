@@ -4,10 +4,8 @@ import VCrudRelationsList from './VCrudRelationsList'
 import VCrudPagination from './VCrudPagination'
 import VCrudObjectPicker from './VCrudObjectPicker'
 import VCrud from './VCrud'
-import VColumnBitwiseFlags from './Columns/VColumnBitwiseFlags'
-import VColumnTimestamp from './Columns/VColumnTimestamp'
-import VColumnDecoratable from './Columns/VColumnDecoratable'
-import VColumnCrudObject from './Columns/VColumnCrudObject'
+import VCrudColumnTimestamp from './Columns/VCrudColumnTimestamp'
+import VCrudColumnDecoratable from './Columns/VCrudColumnDecoratable'
 import VCrudApiForm from './VCrudApiForm'
 
 export {
@@ -16,10 +14,8 @@ export {
   VCrudToolbar,
   VCrudPagination,
   VCrudRelationsList,
-  VColumnBitwiseFlags,
-  VColumnTimestamp,
-  VColumnDecoratable,
-  VColumnCrudObject,
+  VCrudColumnTimestamp,
+  VCrudColumnDecoratable,
   VCrudObjectPicker,
   VCrudApiForm,
 }

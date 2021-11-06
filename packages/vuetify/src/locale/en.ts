@@ -78,6 +78,10 @@ export default {
         loadRelations: 'Relations to load',
         itemsPerPage: 'Load number of items per page',
         includeTrashed: 'Include trashed (deleted) items',
+        sortBy: 'Sort by',
+        sortDir: 'Sort direction',
+        sortAsc: 'Ascending',
+        sortDesc: 'Descending',
       },
       filters: {
         tooltip: 'Query filters',
