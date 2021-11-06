@@ -12,6 +12,7 @@ import { VCard } from '../../VCard'
 import { VInput } from '../../VInput'
 import { VJsonEditor } from '../../VJsonEditor'
 import EasyInteracts from '../../../mixins/easyinteracts'
+import { AsyncComponentFactory } from 'vue/types/options'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -37,6 +38,7 @@ export default baseMixins.extend<options>().extend({
       default: () => (<TagAttribute>{}),
     },
     value: null as any as PropType<any>,
+    customInputComponent: null as any as PropType<AsyncComponentFactory>,
   },
 
   data () {
@@ -48,6 +50,23 @@ export default baseMixins.extend<options>().extend({
 
   methods: {
     getAttributeInput (): VNode {
+      if (this.customInputComponent) {
+        return this.$createElement(
+          this.customInputComponent,
+          {
+            props: {
+              label: this.attribute.name,
+              hint: this.attribute.description,
+              value: this.value,
+            },
+            on: {
+              input: (e: any) => {
+                this.$emit('change', e)
+              },
+            },
+          },
+        )
+      }
       switch (this.attribute.value?.type) {
         case 'object':
           return this.$createElement(

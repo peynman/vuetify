@@ -1,5 +1,4 @@
-import { Component } from 'vue';
-import { AsyncComponentFactory } from 'vue/types/options';
+import { AsyncComponentFactory } from 'vue/types/options'
 import { VNodeData, VNode } from 'vue/types/umd'
 
 export interface SchemaRendererComponent extends VNodeData {
@@ -29,6 +28,7 @@ export interface SchemaRendererComponent extends VNodeData {
 }
 
 export type SchemaRendererBindingPromise = (r: SchemaRendererAgent) => Promise<any>
+export type CustomPropertyResolver = (item: SchemaRendererComponent, attr: TagAttribute) => AsyncComponentFactory
 
 export interface SchemaRendererBinding {
   name: string

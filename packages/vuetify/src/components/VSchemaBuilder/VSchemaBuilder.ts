@@ -13,7 +13,7 @@ import VSchemaRenderer from '../VSchemaRenderer'
 import VSchemaBuilderLabel from './VSchemaBuilderLabel'
 import VSchemaBuilderAppend from './VSchemaBuilderAppend'
 
-import { SchemaRendererComponent } from 'types/services/schemas'
+import { CustomPropertyResolver, SchemaRendererComponent } from 'types/services/schemas'
 
 import { cloneObjectWithCallbackOnKey, cloneObjectWithParentCalculate, cloneObjectWithParentRemove, makeRandomId } from '../../util/helpers'
 import { consoleError } from '../../util/console'
@@ -54,6 +54,7 @@ export default baseMixins.extend<options>().extend({
       type: Array,
       default: () => ([]),
     },
+    customPropertyResolver: null as any as PropType<CustomPropertyResolver>,
   },
 
   data () {
@@ -394,6 +395,7 @@ export default baseMixins.extend<options>().extend({
               props: {
                 item: this.rootChild,
                 extraTypes: this.extraTypes,
+                customPropertyResolver: this.customPropertyResolver,
               },
               on: {
                 'change-props': this.onChangeProps,
@@ -514,6 +516,7 @@ export default baseMixins.extend<options>().extend({
                   props: {
                     item: e.item,
                     extraTypes: this.extraTypes,
+                    customPropertyResolver: this.customPropertyResolver,
                   },
                   on: {
                     'move-first': this.onMoveFirst,

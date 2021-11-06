@@ -1,4 +1,4 @@
-import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, SchemaRendererBinding } from 'types/services/schemas'
+import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, SchemaRendererBinding, CustomPropertyResolver } from 'types/services/schemas'
 import Vue, { PropType, VNode } from 'vue'
 import { VTab, VTabs, VTabItem, VTabsItems, VTabsSlider } from '../../VTabs'
 import { VSchemaBuilderStandardTagAttributes } from '../helpers/TagAttributes'
@@ -22,6 +22,7 @@ export default Vue.extend({
       default: () => (<SchemaRendererComponent>{}),
     },
     properties: Object as PropType<{ [key: string]: any }>,
+    customPropertyResolver: null as any as PropType<CustomPropertyResolver>,
   },
 
   data () {
@@ -83,6 +84,7 @@ export default Vue.extend({
             item: this.item,
             attribute: prop,
             value: this.itemProps[prop.name],
+            customInputComponent: this.customPropertyResolver?.(this.item, prop),
           },
           on: {
             change: (e: any) => {

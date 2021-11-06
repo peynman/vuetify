@@ -3,7 +3,7 @@ import mixins, { ExtractVue } from '../../util/mixins'
 import EasyInteracts from '../../mixins/easyinteracts'
 
 import VIcon from '../VIcon'
-import { SchemaRendererComponent } from 'types/services/schemas'
+import { CustomPropertyResolver, SchemaRendererComponent } from 'types/services/schemas'
 import { VList, VListItem, VListItemTitle, VListItemSubtitle, VListItemContent, VListItemGroup, VListItemIcon } from '../VList'
 import VChip from '../VChip'
 import VAutocomplete from '../VAutocomplete'
@@ -33,6 +33,7 @@ export default baseMixins.extend<options>().extend({
       type: Array,
       default: () => ([]),
     },
+    customPropertyResolver: null as any as PropType<CustomPropertyResolver>,
   },
 
   data: () => ({
@@ -402,6 +403,7 @@ export default baseMixins.extend<options>().extend({
               props: {
                 item: this.item,
                 properties: this.item.tag ? this.typesDictionary[this.item.tag] : {},
+                customPropertyResolver: this.customPropertyResolver,
               },
               on: {
                 'change-props': (e: any) => {
