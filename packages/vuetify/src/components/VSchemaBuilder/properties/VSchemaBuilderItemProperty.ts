@@ -94,7 +94,7 @@ export default baseMixins.extend<options>().extend({
                       startType: 'object',
                     },
                     on: {
-                      change: (e: any) => {
+                      input: (e: any) => {
                         this.$emit('change', e)
                       },
                     },
@@ -137,7 +137,7 @@ export default baseMixins.extend<options>().extend({
                       startType: 'array',
                     },
                     on: {
-                      change: (e: any) => {
+                      input: (e: any) => {
                         this.$emit('change', e)
                       },
                     },

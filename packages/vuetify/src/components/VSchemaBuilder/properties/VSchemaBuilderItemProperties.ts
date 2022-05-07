@@ -1,4 +1,4 @@
-import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, SchemaRendererBinding, CustomPropertyResolver } from 'types/services/schemas'
+import { SchemaRendererComponent, TagAttribute, TagEvent, EventActionType, SchemaRendererBinding, CustomPropertyResolver, EventActionDetails } from 'types/services/schemas'
 import Vue, { PropType, VNode } from 'vue'
 import { VTab, VTabs, VTabItem, VTabsItems, VTabsSlider } from '../../VTabs'
 import { VSchemaBuilderStandardTagAttributes } from '../helpers/TagAttributes'
@@ -7,9 +7,9 @@ import VSchemaBuilderItemProperty from './VSchemaBuilderItemProperty'
 import VSchemaBuilderAddEvent from './VSchemaBuilderItemAddEvent'
 import VSchemaRendererAddBinding from './VSchemaRendererAddBinding'
 import VSchemaRendererBinding from './VSchemaRendererBinding'
+import { consoleWarn } from '../../../util/console'
 
-// import * as AvailableEvents from './Events'
-const AvailableEvents: any[] = []
+import AvailableEvents from './Events'
 
 export default Vue.extend({
   name: 'v-schema-builder-item-properties',
@@ -34,7 +34,7 @@ export default Vue.extend({
       const attr = entry[0]
       const value = entry[1]
 
-      if (attr !== 'props' && attr !== 'on') {
+      if (attr !== 'props' && attr !== 'on' && attr !== 'parent' && attr !== 'children') {
         attributes[attr] = value
       } else if (attr === 'props') {
         for (const prop in value) {
@@ -45,13 +45,14 @@ export default Vue.extend({
           const eventName = entry[0]
           const eventActions = entry[1]
           events[eventName] = []
+          const AvailableEventsRefs: EventActionDetails[] = Object.values(AvailableEvents)
           eventActions.forEach((eventAct: EventActionType) => {
-            const actionRef = Object.values(AvailableEvents).find((e: any) => {
-              return e.default.name === eventAct.action
-            })
+            const action = AvailableEventsRefs.find((
+              avEvent: EventActionDetails) => (avEvent.name === eventName)
+            )
 
-            if (actionRef !== null) {
-              events[eventName].push({ ...eventAct, ...actionRef?.default })
+            if (action !== null) {
+              events[eventName].push({ ...eventAct, ...action })
             }
           })
         })
@@ -71,7 +72,12 @@ export default Vue.extend({
       return this.properties?.events ?? []
     },
     AvailableItemProperties (): any[] {
-      return this.properties?.attributes ?? []
+      const props = this.properties?.attributes
+      if (props) {
+        return props.sort((a: any, b: any) => a.name.localeCompare(b.name))
+      }
+
+      return []
     },
   },
 
@@ -127,8 +133,15 @@ export default Vue.extend({
             change: (details: { [key: string]: any }) => {
               if (this.itemEvents[event.event.name]) {
                 const index = this.itemEvents[event.event.name].indexOf(event)
-                this.$set(this.itemEvents[event.event.name], index, { details })
-                this.$emit('change-events', this.itemEvents)
+                if (index >= 0) {
+                  this.$set(this.itemEvents[event.event.name], index, {
+                    ...event,
+                    details,
+                  })
+                  this.$emit('change-events', this.itemEvents)
+                } else {
+                  consoleWarn('out of index update on item event')
+                }
               }
             },
             'remove-event': (item: SchemaRendererComponent, event: EventActionType) => {
@@ -204,16 +217,12 @@ export default Vue.extend({
     },
 
     GetDynamicPropertiesForItem (): VNode[] {
-      const properties: VNode[] = []
       if (this.item.tag === 'VSchemaRenderer') {
         return this.GetDynamicPropertiesForSchemaRenderer()
       }
 
-      properties.push(...this.AvailableItemProperties.sort(
-        (a: any, b: any) => a.name.localeCompare(b.name)
-      ).map((attr: any) => this.GetDynamicInputForItemWithProperty(attr)))
-
-      return properties
+      return this.AvailableItemProperties
+        .map((attr: any) => this.GetDynamicInputForItemWithProperty(attr))
     },
 
     GetDynamicAttributesForItem (): VNode[] {

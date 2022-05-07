@@ -1,15 +1,15 @@
 import { VNode, VNodeChildren, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
 import EasyInteracts from '../../mixins/easyinteracts'
-
-import VIcon from '../VIcon'
 import { CustomPropertyResolver, SchemaRendererComponent } from 'types/services/schemas'
+
+import VIcon from '../VIcon/VIcon'
 import { VList, VListItem, VListItemTitle, VListItemSubtitle, VListItemContent, VListItemGroup, VListItemIcon } from '../VList'
-import VChip from '../VChip'
-import VAutocomplete from '../VAutocomplete'
-import { GetItemTypeSettingsFromDictionary, TypesDictionary } from './helpers/TagHelpers'
+import VChip from '../VChip/VChip'
+import VAutocomplete from '../VAutocomplete/VAutocomplete'
 import VSchemaBuilderItemProperties from './properties/VSchemaBuilderItemProperties'
-import { VTextField } from '../VTextField'
+import VTextField from '../VTextField/VTextField'
+import { cloneObjectWithParentRemove } from '../../util/helpers'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -46,12 +46,12 @@ export default baseMixins.extend<options>().extend({
       return this.extraTypes?.reduce((dic: { [key: string]: any }, type: any) => {
         dic[type.name] = type
         return dic
-      }, TypesDictionary) as { [key: string]: any }
+      }, this.$vuetify.theme.options?.webTypes ?? {}) as { [key: string]: any }
     },
     typeNamesArrayList (): any[] {
       const items = []
-      for (const block in TypesDictionary) {
-        const def = TypesDictionary[block]
+      for (const block in this.$vuetify.theme.options?.webTypes) {
+        const def = this.$vuetify.theme.options?.webTypes[block]
         items.push({
           id: def.name,
           title: def.name,
@@ -115,7 +115,7 @@ export default baseMixins.extend<options>().extend({
     genChangeSlotMenuContent (): VNode {
       const parentTag = this.item.parent?.tag ?? ''
       // rendering list of av slot names
-      const avSlotsList = TypesDictionary[parentTag]?.slots?.map((slot: any) => {
+      const avSlotsList = this.$vuetify.theme.options?.webTypes?.[parentTag]?.slots?.map((slot: any) => {
         const slotDetails = [
           this.$createElement(VListItemContent, {}, [
             this.$createElement(VListItemTitle, {}, [slot.name]),
@@ -286,7 +286,7 @@ export default baseMixins.extend<options>().extend({
     },
   },
   render (h): VNode {
-    const dictionaryType = GetItemTypeSettingsFromDictionary(this.item, this.extraTypes)
+    const dictionaryType = this.typesDictionary?.[this.item.tag ?? '']
     const extras = []
     let canAddBlocks = false
     const isRoot = this.item.parent === null || this.item.parent === undefined
@@ -330,7 +330,7 @@ export default baseMixins.extend<options>().extend({
         })
       )
       if (this.item.parent?.tag) {
-        const dictionaryParentType = GetItemTypeSettingsFromDictionary(this.item.parent, this.extraTypes)
+        const dictionaryParentType = this.typesDictionary?.[this.item.parent?.tag ?? '']
         if (dictionaryParentType?.slots && dictionaryParentType.slots?.length > 0) {
           extras.push(this.genMenu('mdi-toy-brick-marker', 'secondary', 'Select component slot', [
             this.genChangeSlotMenuContent(),
@@ -401,7 +401,7 @@ export default baseMixins.extend<options>().extend({
           this.genIconDialog('mdi-cog', 'primary', '#' + this.item.id + ' Settings', [
             h(VSchemaBuilderItemProperties, {
               props: {
-                item: this.item,
+                item: cloneObjectWithParentRemove(this.item),
                 properties: this.item.tag ? this.typesDictionary[this.item.tag] : {},
                 customPropertyResolver: this.customPropertyResolver,
               },

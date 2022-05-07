@@ -1,3 +1,11 @@
-export * as ChangeRoute from './ChangeRoute'
-export * as ChangeBinding from './ChangeBinding'
-export * as MakeHttpRequest from './MakeHttpRequest'
+import ChangeRoute from './ChangeRoute'
+import ChangeBinding from './ChangeBinding'
+import MakeHttpRequest from './MakeHttpRequest'
+import EvalExpression from './EvalExpression'
+
+export default [
+  ChangeRoute,
+  ChangeBinding,
+  MakeHttpRequest,
+  EvalExpression,
+]

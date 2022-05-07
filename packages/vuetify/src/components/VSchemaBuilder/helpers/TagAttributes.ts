@@ -2,6 +2,17 @@ import { TagAttribute } from 'types/services/schemas'
 
 export const VSchemaBuilderStandardTagAttributes: TagAttribute[] = [
   {
+    name: 'ref',
+    description: 'ref name to be used to access this component from renderer callbacks as renderer.$refs.[ref]',
+    default: '',
+    value: {
+      kind: 'expression',
+      type: 'string',
+    },
+    cantBind: true,
+    autoBind: true,
+  },
+  {
     name: 'v-for',
     description: 'Iterate this binding value and create components of this type. use $() expression',
     default: '',
@@ -117,6 +128,15 @@ export const VSchemaBuilderStandardTagAttributes: TagAttribute[] = [
     cantBind: true,
   },
   {
+    name: 'staticClass',
+    description: 'Sets the static class on the DOM component',
+    default: "''",
+    value: {
+      kind: 'expression',
+      type: 'string',
+    },
+  },
+  {
     name: 'attributes',
     description: 'Sets other attribute customizations on this component',
     default: {},
@@ -127,9 +147,28 @@ export const VSchemaBuilderStandardTagAttributes: TagAttribute[] = [
     cantBind: true,
   },
   {
-    name: 'staticClass',
-    description: 'Sets the static class on the DOM component',
-    default: "''",
+    name: 'style',
+    description: 'Sets styles on this component',
+    default: {},
+    value: {
+      kind: 'expression',
+      type: 'object',
+    },
+    cantBind: true,
+  },
+  {
+    name: 'contentBeforeChildren',
+    description: 'Set a content string, before rendering other children',
+    default: 'undefined',
+    value: {
+      kind: 'expression',
+      type: 'string',
+    },
+  },
+  {
+    name: 'contentAfterChildren',
+    description: 'Set a content string, after children rendering',
+    default: 'undefined',
     value: {
       kind: 'expression',
       type: 'string',

@@ -109,7 +109,7 @@ export default {
       },
     },
     pagination: {
-      total: 'نمایش {0} منبع از مجموع {1} میبع',
+      total: 'نمایش {0} منبع از مجموع {1} منبع',
     },
     picker: {
       selectAll: 'انتخاب تمام موارد',
@@ -127,6 +127,9 @@ export default {
     endTime: 'زمان پایان',
     ok: 'تایید',
     cancel: 'بگذریم',
+  },
+  timePickerInput: {
+    duration: '{0} ساعت و {1} دقیقه',
   },
   jsonEditor: {
     addTitle: ' افزودن آیتم جدید',

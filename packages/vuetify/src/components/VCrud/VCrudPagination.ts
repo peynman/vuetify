@@ -4,8 +4,8 @@ import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
 
 import { VNode } from 'vue/types/umd'
-import { VPagination } from '../VPagination'
-import { VCard } from '../VCard'
+import VPagination from '../VPagination/VPagination'
+import VCard from '../VCard/VCard'
 
 const baseMixins = mixins(
   CrudConsumer,
@@ -31,7 +31,13 @@ export default baseMixins.extend<options>().extend({
     total: Number,
     perPage: Number,
   },
-
+  computed: {
+    numberFormatter (): Intl.NumberFormat {
+      return new Intl.NumberFormat(this.$vuetify.lang.current, {
+        style: 'decimal',
+      })
+    },
+  },
   methods: {
     genPagination (): VNode {
       const elements = [
@@ -59,7 +65,11 @@ export default baseMixins.extend<options>().extend({
           {
             staticClass: 'mt-1 text-caption',
           },
-          this.$vuetify.lang.t('$vuetify.crud.pagination.total', this.itemsCount, this.total),
+          this.$vuetify.lang.t(
+            '$vuetify.crud.pagination.total',
+            this.numberFormatter.format(this.itemsCount ?? 0),
+            this.numberFormatter.format(this.total ?? 0)
+          )
         ))
       }
       return this.$createElement(

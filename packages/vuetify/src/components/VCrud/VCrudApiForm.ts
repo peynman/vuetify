@@ -3,6 +3,7 @@ import { SchemaRendererAgent, SchemaRendererBinding, SchemaRendererComponent } f
 import { PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
 import { getNestedObjectValue } from './util/helpers'
+import { AsyncComponentFactory } from 'vue/types/options'
 
 import CrudConsumer from './CrudConsumer'
 import { VNode } from 'vue/types/umd'
@@ -38,6 +39,14 @@ export default baseMixins.extend<options>().extend({
       default: true,
     },
     extraActions: Array as PropType<Array<SchemaRendererComponent>>,
+    extraBindings: {
+      type: Array as PropType<Array<SchemaRendererBinding>>,
+      default: () => ([]),
+    },
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
+      default: () => ({}),
+    },
     value: {
       type: Object as PropType<{ [key: string]: any }> | undefined,
       default: undefined,
@@ -46,7 +55,7 @@ export default baseMixins.extend<options>().extend({
 
   data () {
     return {
-      formValues: (this.value || {}) as { [key: string]: any },
+      formValues: (Object.assign({}, this.value) || {}) as { [key: string]: any },
     }
   },
 
@@ -66,7 +75,7 @@ export default baseMixins.extend<options>().extend({
   computed: {
     apiMethod (): ApiMethod|undefined {
       if (this.isAction) {
-        return this.crudResource?.actions?.[this.api].api
+        return this.crudResource?.actions?.[this.api]?.api
       } else {
         return this.crudResource?.api?.[this.api]
       }
@@ -107,6 +116,9 @@ export default baseMixins.extend<options>().extend({
           })
         })
       }
+      if (this.extraBindings) {
+        bindings.push(...this.extraBindings)
+      }
       return bindings
     },
     hasTabs (): Boolean {
@@ -127,16 +139,19 @@ export default baseMixins.extend<options>().extend({
           ref: 'renderer',
           props: {
             bindings,
+            componentsDictionary: this.componentsDictionary,
             children: [{
               tag: 'VCard',
               children: [
-                {
-                  tag: 'VCardTitle',
-                  children: title,
-                },
-                {
-                  tag: 'VDivider',
-                },
+                ...(title.length > 0 ? [
+                  {
+                    tag: 'VCardTitle',
+                    children: title,
+                  },
+                  {
+                    tag: 'VDivider',
+                  },
+                ] : []),
                 ...(this.loading ? [{
                   tag: 'VProgressLinear',
                   props: {
@@ -147,13 +162,15 @@ export default baseMixins.extend<options>().extend({
                   tag: 'VCardText',
                   children: [formSchema],
                 },
-                {
-                  tag: 'VDivider',
-                },
-                {
-                  tag: 'VCardActions',
-                  children: actionsSchema,
-                },
+                ...(actionsSchema?.length > 0 ? [
+                  {
+                    tag: 'VDivider',
+                  },
+                  {
+                    tag: 'VCardActions',
+                    children: actionsSchema,
+                  },
+                ] : []),
               ],
             }],
           },
@@ -171,10 +188,16 @@ export default baseMixins.extend<options>().extend({
         if (input.rules) {
           props.rules = input.rules
         }
+        let vmodel = null
+        if (input.component?.['v-model']) {
+          vmodel = input.component?.['v-model']
+        } else {
+          vmodel = '$(bindings.' + input.key + ')'
+        }
         return {
           id: `${this.id}-${this.api}-${input.key}`,
           ...(input.component ?? {}),
-          'v-model': '$(bindings.' + input.key + ')',
+          'v-model': vmodel,
           props,
         }
       }

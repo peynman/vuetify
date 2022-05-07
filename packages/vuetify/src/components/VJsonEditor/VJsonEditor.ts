@@ -1,21 +1,21 @@
 import { VNode, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
-
-import VIcon from '../VIcon'
-import VBtn from '../VBtn'
-import VChip from '../VChip'
-import VTextField from '../VTextField'
-import { VSpacer, VCol } from '../VGrid'
-import { VToolbar } from '../VToolbar'
-import { VTreeview } from '../VTreeview'
-import { VSelect } from '../VSelect'
-import { VDivider } from '../VDivider'
-import { VLabel } from '../VLabel'
-
 import EasyInteracts from '../../mixins/easyinteracts'
 import { consoleError } from '../../util/console'
-import { SchemaRendererComponent } from 'types/services/schemas'
-import { VSchemaRenderer } from '../VSchemaRenderer'
+
+import VIcon from '../VIcon/VIcon'
+import VBtn from '../VBtn/VBtn'
+import VChip from '../VChip/VChip'
+import VTextField from '../VTextField/VTextField'
+import VSimpleCheckbox from '../VCheckbox/VSimpleCheckbox'
+import VSpacer from '../VGrid/VSpacer'
+import VToolbar from '../VToolbar/VToolbar'
+import VTreeview from '../VTreeview/VTreeview'
+import VSelect from '../VSelect/VSelect'
+import VDivider from '../VDivider/VDivider'
+import VLabel from '../VLabel/VLabel'
+import { VList, VListItemContent, VListItemTitle, VListItem } from '../VList'
+import { makeRandomId } from '../../util/helpers'
 
 const baseMixins = mixins(
   EasyInteracts
@@ -28,8 +28,18 @@ interface options extends ExtractVue<typeof baseMixins> {
 export interface ItemType {
   text: string
   value: string
-  form?: Array<SchemaRendererComponent>
   genNewItem (values: { [key: string]: any }): any
+}
+
+export interface ItemTreeviewType {
+  ref: any
+  parentRef?: any
+  parentType?: string
+  label: string|number
+  type: string
+  value: any
+  dirty?: string
+  children?: ItemTreeviewType[]
 }
 
 export default baseMixins.extend<options>().extend({
@@ -55,30 +65,29 @@ export default baseMixins.extend<options>().extend({
       type: String,
       default: '',
     },
+    readonly: Boolean,
+    smallIcons: Boolean,
+    xSmallIcons: Boolean,
     extraTypes: null as any as PropType<Array<ItemType>|null>,
     hideDefaultTypes: Boolean,
   },
 
   data () {
-    let objectSchema: any = this.startType === 'array' ? [] : {}
+    let internalValue: any = this.startType === 'array' ? [] : {}
     if (this.value) {
       if (typeof this.value === 'string') {
         try {
-          objectSchema = JSON.parse(this.value)
+          internalValue = JSON.parse(this.value)
         } catch (error: any) {
           consoleError(error)
         }
       } else {
-        objectSchema = this.value
+        internalValue = this.value
       }
     }
     return {
-      objectSchema,
+      internalValue,
       mode: this.startMode === null ? 'editor' : this.startMode,
-      add_type: null as any,
-      add_name: null as any,
-      add_value: null as any,
-      form_values: {},
     }
   },
 
@@ -88,50 +97,22 @@ export default baseMixins.extend<options>().extend({
         {
           text: 'String',
           value: 'string',
-          form: [
-            {
-              tag: 'VTextField',
-              'v-model': 'str',
-              props: {
-                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
-              },
-            },
-          ],
           genNewItem (vals: { [key: string]: any }): any {
-            return vals.str
+            return vals.str || ''
           },
         },
         {
           text: 'Number',
           value: 'number',
-          form: [
-            {
-              tag: 'VTextField',
-              'v-model': 'num',
-              props: {
-                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
-                type: 'number',
-              },
-            },
-          ],
           genNewItem (vals: { [key: string]: any }): any {
-            return vals.num
+            return vals.num || 1
           },
         },
         {
           text: 'Boolean',
           value: 'bool',
-          form: [
-            {
-              tag: 'VCheckbox',
-              'v-model': 'checked',
-              props: {
-                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemValueLabel'),
-              },
-            },
-          ],
           genNewItem (vals: { [key: string]: any }): any {
-            return vals.checked
+            return vals.checked || true
           },
         },
         {
@@ -163,11 +144,30 @@ export default baseMixins.extend<options>().extend({
 
       return types
     },
+    treeViewItems (): ItemTreeviewType[] {
+      return this.getTreeViewItemsFromSchema(this.internalValue)
+    },
+  },
+
+  watch: {
+    value () {
+      if (this.value) {
+        if (typeof this.value === 'string') {
+          try {
+            this.internalValue = JSON.parse(this.value)
+          } catch (error: any) {
+            consoleError(error)
+          }
+        } else {
+          this.internalValue = this.value
+        }
+      }
+    },
   },
 
   methods: {
-    getTreeViewItemsFromSchema (schema: any) {
-      const treeview: any[] = []
+    getTreeViewItemsFromSchema (schema: any): ItemTreeviewType[] {
+      const treeview: ItemTreeviewType[] = []
 
       if (Array.isArray(schema)) {
         schema.forEach((item: any, indexer: number) => {
@@ -231,7 +231,7 @@ export default baseMixins.extend<options>().extend({
       return treeview
     },
     onDownload () {
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.objectSchema, null, 2))
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.internalValue, null, 2))
       const downloadAnchorNode = document.createElement('a')
       downloadAnchorNode.setAttribute('href', dataStr)
       downloadAnchorNode.setAttribute('download', 'schema.json')
@@ -256,8 +256,8 @@ export default baseMixins.extend<options>().extend({
               reader.onload = (e: any) => {
                 try {
                   const fileHandler = e.target
-                  this.objectSchema = JSON.parse(fileHandler.result)
-                  this.$emit('change', this.objectSchema)
+                  this.internalValue = JSON.parse(fileHandler.result)
+                  this.$emit('input', this.internalValue)
                 } catch (e: any) {
                   consoleError(e)
                 }
@@ -285,128 +285,55 @@ export default baseMixins.extend<options>().extend({
         staticClass: 'd-flex flex-column flex-grow-1',
       }, children)
     },
-    genNewItemMenu (parent: any): VNode {
-      const properties: VNode[] = []
-
-      if (!Array.isArray(parent)) {
-        properties.push(
-          this.$createElement(
-            VTextField,
-            {
-              props: {
-                label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemKeyLabel'),
-                'hide-details': true,
-                dense: true,
-              },
-              on: {
-                change: (e: any) => {
-                  this.add_name = e
-                },
-              },
-            }
-          )
-        )
-      }
-
-      properties.push(
-        this.$createElement(
-          VSelect,
-          {
-            props: {
-              items: this.availableItemTypes,
-              label: this.$vuetify.lang.t('$vuetify.jsonEditor.itemTypeLabel'),
-              'hide-details': true,
-              returnObject: true,
-              dense: true,
-            },
-            on: {
-              change: (e: any) => {
-                this.add_type = e
-              },
-            },
-          },
-        )
-      )
-      properties.push(
-        this.$createElement(
-          VDivider,
-          {
-            staticClass: 'mt-3',
-          }
-        )
-      )
-
-      if (this.add_type) {
-        properties.push(
-          this.$createElement(
-            VSchemaRenderer,
-            {
-              props: {
-                children: this.add_type.form ?? [],
-                value: this.form_values,
-              },
-              on: {
-                input: (values: { [key: string]: any }) => {
-                  this.form_values = values
-                },
-              },
-            }
-          )
-        )
-      }
-
-      return this.$createElement(
-        VCol,
+    genAvailableItemTypesList (parent: any): VNode[] {
+      return [this.$createElement(
+        VList,
         {
         },
-        [
-          ...properties,
-          this.$createElement(
-            VBtn,
+        this.availableItemTypes.map((t: ItemType) => {
+          return this.$createElement(
+            VListItem,
             {
-              staticClass: 'mt-3',
-              props: {
-                color: 'success',
-                block: true,
-              },
               on: {
-                click: () => {
-                  if (this.add_type !== null && (Array.isArray(parent) || this.add_name !== null)) {
-                    const value = this.add_type.genNewItem(this.form_values)
-                    if (Array.isArray(parent)) {
-                      parent.push(value)
-                      this.$emit('change', this.objectSchema)
-                    } else {
-                      this.$set(parent, this.add_name, value)
-                      this.$emit('change', this.objectSchema)
-                    }
+                click: (e: any) => {
+                  const value = t.genNewItem(this.internalValue)
+                  if (Array.isArray(parent)) {
+                    parent.push(value)
+                    this.emitChanges()
+                  } else {
+                    this.$set(parent, makeRandomId(5), value)
+                    this.emitChanges()
                   }
                 },
               },
             },
-            this.$vuetify.lang.t('$vuetify.jsonEditor.addSubmit')
-          ),
-        ]
-      )
+            [
+              this.$createElement(VListItemContent, {}, [this.$createElement(VListItemTitle, {}, t.text)]),
+            ]
+          )
+        })
+      )]
     },
     genToolbar (): VNode {
       const toolbarItems: VNode[] = []
 
-      if (this.mode === 'editor') {
+      if (this.mode === 'editor' && !this.readonly) {
         toolbarItems.push(
           this.genMenu(
             'mdi-plus-circle',
             'green',
             this.$vuetify.lang.t('$vuetify.jsonEditor.addTitle'),
-            [this.genNewItemMenu(this.objectSchema)],
+            [this.genAvailableItemTypesList(this.internalValue)],
             null,
             {
               'close-on-content-click': false,
             },
             {
-              'x-small': false,
+              small: this.smallIcons,
+              'x-small': this.xSmallIcons,
               iconProps: {
-                'x-small': false,
+                small: this.smallIcons,
+                'x-small': this.xSmallIcons,
               },
             }
           )
@@ -422,7 +349,8 @@ export default baseMixins.extend<options>().extend({
                 dense: true,
                 'hide-details': true,
                 solo: true,
-                rounded: true,
+                flat: true,
+                rounded: false,
                 disabled: !this.canChangeRootType,
                 items: [
                   {
@@ -434,14 +362,14 @@ export default baseMixins.extend<options>().extend({
                     value: 'object',
                   },
                 ],
-                value: Array.isArray(this.objectSchema) ? 'array' : 'object',
+                value: Array.isArray(this.internalValue) ? 'array' : 'object',
               },
               on: {
                 change: (e: any) => {
                   if (e === 'object') {
-                    this.objectSchema = {}
+                    this.internalValue = {}
                   } else {
-                    this.objectSchema = []
+                    this.internalValue = []
                   }
                 },
               },
@@ -465,6 +393,7 @@ export default baseMixins.extend<options>().extend({
           }, () => {
             this.mode = this.mode === 'editor' ? 'code' : 'editor'
           }),
+          ...toolbarItems,
           this.$createElement(
             VLabel,
             {
@@ -482,7 +411,6 @@ export default baseMixins.extend<options>().extend({
           this.$createElement(
             VSpacer
           ),
-          ...toolbarItems,
           this.$createElement(
             VDivider,
             {
@@ -498,13 +426,15 @@ export default baseMixins.extend<options>().extend({
             'red',
             'Reset SchemaBuilder Tree',
             this.genRemoveItemMenuContent(() => {
-              this.objectSchema = []
+              this.internalValue = []
             }),
             null,
-            {},
+            {
+            },
             {
               'x-small': false,
               small: true,
+              disabled: this.readonly,
               iconProps: {
                 'x-small': false,
                 small: true,
@@ -522,9 +452,11 @@ export default baseMixins.extend<options>().extend({
           ),
           this.genToolbarButton('mdi-download', {
             color: 'secondary',
+            disabled: this.readonly,
           }, this.onDownload),
           this.genToolbarButton('mdi-upload', {
             color: 'secondary',
+            disabled: this.readonly,
           }, this.onUpload),
         ]
       )
@@ -553,7 +485,7 @@ export default baseMixins.extend<options>().extend({
       return this.$createElement(
         'pre',
         {},
-        JSON.stringify(this.objectSchema, null, 2),
+        JSON.stringify(this.internalValue, null, 2),
       )
     },
     genTreeEditor (): VNode {
@@ -561,9 +493,9 @@ export default baseMixins.extend<options>().extend({
         VTreeview,
         {
           props: {
-            rounded: true,
+            rounded: false,
             hoverable: true,
-            items: this.getTreeViewItemsFromSchema(this.objectSchema),
+            items: this.treeViewItems,
             dense: true,
             'multiple-active': true,
             'open-all': true,
@@ -572,153 +504,259 @@ export default baseMixins.extend<options>().extend({
           },
           scopedSlots: {
             label: e => {
-              const properties: VNode[] = []
-              if (e.item.parentType === 'array') {
-                properties.push(
-                  this.$createElement(
-                    VChip,
-                    {
-                      props: {
-                        dense: true,
-                      },
-                    },
-                    [
-                      e.item.label.toString(),
-                    ]
-                  )
-                )
-              } else {
-                properties.push(
-                  this.$createElement(
-                    VTextField,
-                    {
-                      props: {
-                        solo: true,
-                        rounded: true,
-                        outlined: true,
-                        dense: true,
-                        flat: true,
-                        label: 'Item name',
-                        'hide-details': true,
-                        value: e.item.label,
-                      },
-                    }
-                  )
-                )
-                properties.push(
-                  this.$createElement(
-                    VChip,
-                    {
-                      staticClass: 'mx-1',
-                      props: {
-                        dense: true,
-                      },
-                    },
-                    ':'
-                  )
-                )
-              }
-
-              if (['bool', 'number', 'string'].includes(e.item.type)) {
-                properties.push(
-                  this.$createElement(
-                    VTextField,
-                    {
-                      props: {
-                        solo: true,
-                        outlined: true,
-                        rounded: true,
-                        flat: true,
-                        dense: true,
-                        label: 'Item value',
-                        'hide-details': true,
-                        value: e.item.value,
-                      },
-                    }
-                  )
-                )
-              } else {
-                properties.push(
-                  this.$createElement(
-                    VChip,
-                    {
-                      props: {
-                        dense: true,
-                      },
-                    },
-                    [
-                      e.item.type === 'array' ? 'Array (' + e.item.children.length + ')' : (e.item.type === 'object' && e.item.children?.length > 0 ? 'Object' : 'Null'),
-                    ]
-                  )
-                )
-              }
-
-              properties.push(
-                this.$createElement(
-                  VSpacer
-                )
-              )
-
-              if (['array', 'object'].includes(e.item.type)) {
-                properties.push(
-                  this.genMenu(
-                    'mdi-plus-circle',
-                    'green',
-                    'Add new item',
-                    [this.genNewItemMenu(e.item.ref)],
-                    null,
-                    {
-                      'close-on-content-click': false,
-                    },
-                    {
-                      'x-small': false,
-                      iconProps: {
-                        'x-small': false,
-                      },
-                    },
-                  )
-                )
-              }
-
-              properties.push(
-                this.genMenu(
-                  'mdi-delete',
-                  'red',
-                  'Remove item',
-                  this.genRemoveItemMenuContent(() => {
-                    if (e.item.parentType === 'array') {
-                      e.item.parentRef.splice(e.item.parentRef.indexOf(e.item.ref), 1)
-                      this.$emit('change', this.objectSchema)
-                    } else {
-                      this.$set(e.item.parentRef, e.item.label, undefined)
-                      this.$emit('change', this.objectSchema)
-                      this.$forceUpdate()
-                    }
-                  }),
-                  null,
-                  {},
-                  {
-                    'x-small': false,
-                    iconProps: {
-                      'x-small': false,
-                    },
-                  },
-                )
-              )
-              return this.$createElement(
-                'div',
-                {
-                  staticClass: 'd-flex flex-row justify-start align-center my-1',
-                },
-                properties
-              )
+              return this.genTreeEditorItemLabel(e.item)
             },
             append: e => {
-              return null
+              return this.genTreeEditorItemAppend(e.item)
             },
           },
         }
       )
+    },
+    genTreeEditorItemAppend (item: ItemTreeviewType): VNode {
+      const properties: VNode[] = []
+      if (['array', 'object'].includes(item.type) && !this.readonly) {
+        properties.push(
+          this.genMenu(
+            'mdi-plus-circle',
+            'green',
+            'Add new item',
+            [this.genAvailableItemTypesList(item.ref)],
+            null,
+            {
+              'close-on-content-click': false,
+            },
+            {
+              'x-small': false,
+              iconProps: {
+                'x-small': false,
+              },
+            },
+          )
+        )
+      }
+
+      if (!this.readonly) {
+        properties.push(
+          this.genMenu(
+            'mdi-delete',
+            'red',
+            'Remove item',
+            this.genRemoveItemMenuContent(() => {
+              if (item.parentType === 'array') {
+                item.parentRef.splice(item.parentRef.indexOf(item.ref), 1)
+                this.$emit('input', this.internalValue)
+              } else {
+                this.$set(item.parentRef, item.label, undefined)
+                delete item.parentRef[item.label]
+                this.$emit('input', this.internalValue)
+                this.$forceUpdate()
+              }
+            }),
+            null,
+            {},
+            {
+              'x-small': false,
+              iconProps: {
+                'x-small': false,
+              },
+            },
+          )
+        )
+      }
+
+      return this.$createElement(
+        'div',
+        {
+          staticClass: 'd-flex flex-row justify-start align-center my-1',
+        },
+        properties
+      )
+    },
+    genTreeEditorItemLabel (item: ItemTreeviewType): VNode {
+      const properties: VNode[] = []
+      if (item.parentType === 'array') {
+        properties.push(
+          this.$createElement(
+            VChip,
+            {
+              staticClass: 'pa-1 px-2 me-1',
+              props: {
+                dense: true,
+                label: true,
+              },
+            },
+            [
+              '#' + item.label.toString(),
+            ]
+          )
+        )
+      } else {
+        const updateItemLabelEvent = (item: ItemTreeviewType) => {
+          this.$set(item.parentRef, item.label, undefined)
+          delete item.parentRef[item.label]
+          this.$set(item, 'label', item.dirty)
+          this.$set(item.parentRef, item.label, item.value)
+          this.$set(item, 'dirty', undefined)
+          this.emitChanges()
+        }
+        properties.push(
+          this.$createElement(
+            VTextField,
+            {
+              props: {
+                solo: true,
+                rounded: false,
+                outlined: true,
+                dense: true,
+                flat: true,
+                label: 'Item name',
+                'hide-details': true,
+                value: item.label,
+                readonly: this.readonly,
+              },
+              on: {
+                input: (newLabel: any) => {
+                  this.$set(item, 'dirty', newLabel)
+                },
+                keydown: (keyEv: KeyboardEvent) => {
+                  if (keyEv.key === 'Enter') {
+                    updateItemLabelEvent(item)
+                  }
+                },
+              },
+            },
+            [
+              ...((item.dirty?.length || 0) > 0 ? [this.$createElement('template', { slot: 'append' }, [
+                this.$createElement(VBtn, {
+                  props: {
+                    icon: true,
+                  },
+                  on: {
+                    click: () => {
+                      updateItemLabelEvent(item)
+                    },
+                  },
+                }, [
+                  this.$createElement(VIcon, { props: { small: true } }, 'mdi-check'),
+                ]),
+              ])] : []),
+            ]
+          )
+        )
+        properties.push(
+          this.$createElement(
+            VChip,
+            {
+              staticClass: 'mx-1',
+              props: {
+                dense: true,
+              },
+            },
+            ':'
+          )
+        )
+      }
+
+      const itemValueUpdate = (newVal: any) => {
+        this.$set(item, 'value', newVal)
+        this.$set(item.parentRef, item.label, newVal)
+        this.emitChanges()
+      }
+      if (['number', 'string'].includes(item.type)) {
+        properties.push(
+          this.$createElement(
+            VTextField,
+            {
+              props: {
+                solo: true,
+                outlined: true,
+                rounded: false,
+                flat: true,
+                dense: true,
+                label: 'Item value',
+                'hide-details': true,
+                value: item.value,
+                readonly: this.readonly,
+                type: item.type === 'number' ? 'number' : 'text',
+              },
+              on: {
+                change: itemValueUpdate,
+              },
+            }
+          )
+        )
+      } else if (item.type === 'bool') {
+        properties.push(
+          this.$createElement(
+            VSimpleCheckbox,
+            {
+              props: {
+                solo: true,
+                outlined: true,
+                rounded: false,
+                flat: true,
+                dense: true,
+                label: 'Item value',
+                'hide-details': true,
+                value: item.value === true,
+                readonly: this.readonly,
+              },
+              on: {
+                input: itemValueUpdate,
+              },
+            }
+          )
+        )
+      } else {
+        properties.push(
+          this.$createElement(
+            VChip,
+            {
+              props: {
+                dense: true,
+              },
+            },
+            [
+              item.type === 'array' ? 'Array (' + item.children?.length + ')'
+                : (item.type === 'object' ? 'Object {' + item.children?.length + '}'
+                  : item.value === null ? 'Null' : 'Object {}'),
+            ]
+          )
+        )
+      }
+
+      return this.$createElement(
+        'div',
+        {
+          staticClass: 'd-flex flex-row justify-start align-center my-1',
+        },
+        properties
+      )
+    },
+    emitChanges () {
+      const jsonValue = Array.isArray(this.internalValue) ? [] : {}
+      const iterateTreeItems = (root: any, item: ItemTreeviewType[]) => {
+        item.forEach((i: ItemTreeviewType) => {
+          if (['object', 'array', 'json'].includes(i.type)) {
+            const innerValue = i.type === 'array' ? [] : {}
+            iterateTreeItems(innerValue, i.children ?? [])
+            if (Array.isArray(root)) {
+              root.push(innerValue)
+            } else {
+              root[i.label] = innerValue
+            }
+          } else {
+            if (Array.isArray(root)) {
+              root.push(i.value)
+            } else {
+              root[i.label] = i.value
+            }
+          }
+        })
+      }
+      iterateTreeItems(jsonValue, this.treeViewItems)
+      this.$emit('input', jsonValue)
     },
   },
 

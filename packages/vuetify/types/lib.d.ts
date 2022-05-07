@@ -14,7 +14,7 @@ declare module 'vuetify/lib' {
 }
 
 declare module 'vuetify/lib/components' {
-  import { VueConstructor } from 'vue'
+  import { VueConstructor, DirectiveOptions } from 'vue'
 
   const VApp: VueConstructor
   const VAppBar: VueConstructor
@@ -179,6 +179,19 @@ declare module 'vuetify/lib/components' {
   const VSlideYReverseTransition: VueConstructor
   const VExpandTransition: VueConstructor
   const VExpandXTransition: VueConstructor
+  const VSchemaBuilder: VueConstructor
+  const VSChemaRever: VueConstructor
+  const VCrud: VueConstructor
+  const VCrudApiForm: VueConstructor
+  const VCrudToolbar: VueConstructor
+  const VCrudTable: VueConstructor
+  const VCrudPagination: VueConstructor
+  const VCrudRelationsList: VueConstructor
+  const VCrudColumnTimestamp: VueConstructor
+  const VCrudColumnDecoratable: VueConstructor
+  const VCrudObjectPicker: VueConstructor
+  const VJsonEditor: VueConstructor
+  const VTimestampInput: VueConstructor
 
   export {
     VApp,
@@ -344,11 +357,23 @@ declare module 'vuetify/lib/components' {
     VSlideYReverseTransition,
     VExpandTransition,
     VExpandXTransition,
+    VSchemaBuilder,
+    VSChemaRever,
+    VCrud,
+    VCrudApiForm,
+    VCrudToolbar,
+    VCrudTable,
+    VCrudPagination,
+    VCrudRelationsList,
+    VCrudColumnTimestamp,
+    VCrudColumnDecoratable,
+    VCrudObjectPicker,
+    VJsonEditor,
+    VTimestampInput,
   }
 }
 
 declare module 'vuetify/lib/directives' {
-  import { DirectiveOptions } from 'vue'
 
   const ClickOutside: DirectiveOptions
   const Intersect: DirectiveOptions

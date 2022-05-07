@@ -4,7 +4,8 @@ import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
 
 import { PropType, VNode } from 'vue/types/umd'
-import { VCol } from '../VGrid'
+import { AsyncComponentFactory } from 'vue/types/options'
+import VCol from '../VGrid/VCol'
 import VCrudToolbar from './VCrudToolbar'
 import VCrudTable from './VCrudTable'
 import VCrudPagination from './VCrudPagination'
@@ -77,6 +78,10 @@ export default baseMixins.extend<options>().extend({
       type: Boolean,
       default: true,
     },
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
+      default: () => ({}),
+    },
   },
 
   data () {
@@ -144,6 +149,7 @@ export default baseMixins.extend<options>().extend({
             large: this.large,
             xLarge: this.xLarge,
             crudUser: this.crudUser,
+            componentsDictionary: this.componentsDictionary,
             valueSettings: this.settings,
             valueSelections: this.selectedItems,
           },
@@ -197,6 +203,7 @@ export default baseMixins.extend<options>().extend({
             showSelect: this.showItemSelectable,
             tableSettings: this.settings,
             perPage: this.showItemsPerPage,
+            componentsDictionary: this.componentsDictionary,
           },
           on: {
             'update-selections': (crud: CrudResource, selections: any[]) => {

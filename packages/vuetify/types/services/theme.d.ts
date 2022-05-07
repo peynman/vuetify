@@ -9,12 +9,17 @@ export interface Theme {
     minifyTheme?: ThemeMinifyTheme
     themeCache?: VuetifyThemeCache
     variations?: boolean
+    webTypes?: WebTypesMetadata
   }
   themes: {
     dark: VuetifyThemeVariant
     light: VuetifyThemeVariant
   }
   readonly currentTheme: Partial<VuetifyThemeVariant>
+}
+
+export interface WebTypesMetadata {
+  [key: string]: any
 }
 
 export interface ThemeOptions {
@@ -28,6 +33,7 @@ export interface ThemeOptions {
     minifyTheme?: ThemeMinifyTheme
     themeCache?: VuetifyThemeCache
     variations?: boolean
+    webTypes?: WebTypesMetadata
   }
   themes?: {
     dark?: Partial<VuetifyThemeVariant>

@@ -2,14 +2,13 @@ import { VNode, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../../util/mixins'
 import EasyInteracts from './../../../mixins/easyinteracts'
 
-import { SchemaRendererComponent, TagEvent, EventActionType } from 'types/services/schemas'
+import { SchemaRendererComponent, TagEvent, EventActionType, EventActionDetails } from 'types/services/schemas'
 import { VBtn } from '../../VBtn'
 import { VToolbar, VToolbarTitle } from '../../VToolbar'
 import { VSpacer, VCol } from '../../VGrid'
 import { VSelect } from '../../VSelect'
 import { makeRandomId } from './../../../util/helpers'
-// import * as AvailableEvents from './Events'
-const AvailableEvents: any[] = []
+import AvailableEvents from './Events'
 
 export interface SelectableItem {
   name: string
@@ -49,9 +48,9 @@ export default baseMixins.extend<options>().extend({
 
   computed: {
     actionTypeList (): SelectableItem[] {
-      return Object.values(AvailableEvents).map<SelectableItem>((e: any) => ({
-        name: e.default.name,
-        text: e.default.text,
+      return Object.values(AvailableEvents).map<SelectableItem>((e: EventActionDetails) => ({
+        name: e.name,
+        text: e.text,
       }))
     },
     eventsList (): SelectableItem[] {
@@ -115,15 +114,17 @@ export default baseMixins.extend<options>().extend({
                 click: () => {
                   if (this.add_event != null && this.add_action != null) {
                     const actionEventType = Object.values(AvailableEvents).find(
-                      (e: any) => (e.default.name === this.add_action?.name)
+                      (e: EventActionDetails) => (e.name === this.add_action?.name)
                     )
 
                     if (actionEventType !== undefined) {
                       this.$emit('add-event', <EventActionType>{
                         uid: makeRandomId(10),
                         action: this.add_action.name,
-                        event: this.add_event,
-                        genDetailsDialog: actionEventType.default.genDetailsDialog,
+                        event: {
+                          name: this.add_event.name,
+                        },
+                        genDetailsDialog: actionEventType.genDetailsDialog,
                       })
                     }
                   }

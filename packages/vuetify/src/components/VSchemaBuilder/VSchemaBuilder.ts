@@ -1,15 +1,15 @@
 import { VNode, PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
 
-import VIcon from '../VIcon'
-import VBtn from '../VBtn'
-import VLabel from '../VLabel'
-import { VSpacer } from '../VGrid'
-import { VDivider } from '../VDivider'
-import { VToolbar } from '../VToolbar'
-import { VTreeview } from '../VTreeview'
+import VIcon from '../VIcon/VIcon'
+import VBtn from '../VBtn/VBtn'
+import VLabel from '../VLabel/VLabel'
+import VSpacer from '../VGrid/VSpacer'
+import VDivider from '../VDivider/VDivider'
+import VToolbar from '../VToolbar/VToolbar'
+import VTreeview from '../VTreeview/VTreeview'
 
-import VSchemaRenderer from '../VSchemaRenderer'
+import VSchemaRenderer from '../VSchemaRenderer/VSchemaRenderer'
 import VSchemaBuilderLabel from './VSchemaBuilderLabel'
 import VSchemaBuilderAppend from './VSchemaBuilderAppend'
 
@@ -40,6 +40,10 @@ export default baseMixins.extend<options>().extend({
       type: String,
       default: 'maker',
     },
+    loaderMode: {
+      type: Boolean,
+      default: false,
+    },
     value: {
       type: Object as PropType<SchemaRendererComponent>,
       default: () => ({
@@ -53,6 +57,10 @@ export default baseMixins.extend<options>().extend({
     extraTypes: {
       type: Array,
       default: () => ([]),
+    },
+    rendererPreProcessor: {
+      type: Function,
+      default: undefined,
     },
     customPropertyResolver: null as any as PropType<CustomPropertyResolver>,
   },
@@ -158,16 +166,17 @@ export default baseMixins.extend<options>().extend({
     },
     onChangeAttributes (item: SchemaRendererComponent, attributes: { [key: string]: any }) {
       for (const attr in attributes) {
-        item[attr] = attributes[attr]
+        this.$set(item, attr, attributes[attr])
       }
       this.$emit('input', this.generatedSchema)
     },
     onChangeEvents (item: SchemaRendererComponent, events: { [key: string]: any }) {
-      item.on = { ...events }
+      this.$set(item, 'on', { ...events })
       this.$emit('input', this.generatedSchema)
     },
     onChangeSlots (item: SchemaRendererComponent, slots: { [key: string]: any }) {
-      item.slotDetails = slots
+      this.$set(item, 'slotDetails', slots)
+      this.$set(item, 'slot', slots.slot)
       this.$emit('input', this.generatedSchema)
     },
     onAddChild (item: SchemaRendererComponent, tags: Array<string>) {
@@ -554,10 +563,13 @@ export default baseMixins.extend<options>().extend({
             wrapStyle: this.rootChild.wrapStyle,
             ...this.rootChild.props,
             editorMode: this.editablePreview,
+            previewMode: true,
+            loaderMode: this.loaderMode,
             componentsDictionary: this.extraTypes?.filter((type: any) => (type.factory)).reduce((factory: any, type: any) => {
               factory[type.name] = type.factory
               return factory
             }, {}),
+            preProcessor: this.rendererPreProcessor,
           },
           on: {
             'move-first': this.onMoveFirst,

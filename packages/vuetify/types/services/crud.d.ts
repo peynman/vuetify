@@ -14,7 +14,7 @@ export interface CrudResource {
   exportableColumns?: Array<string>
   actions?: {
     [key: string]: CrudAction
-  },
+  }
   api?: {
     [key: string]: ApiMethod|undefined
     create?: ApiMethod

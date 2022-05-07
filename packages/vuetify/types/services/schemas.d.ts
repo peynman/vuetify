@@ -15,6 +15,8 @@ export interface SchemaRendererComponent extends VNodeData {
   parent?: SchemaRendererComponent|null
   default?: any
   dontEvalBindings?: boolean
+  contentBeforeChildren?: string
+  contentAfterChildren?: string
   'v-for'?: string
   'v-model'?: string
   'v-model-property-name'?: string

@@ -1,30 +1,32 @@
 import Vue, { PropType } from 'vue'
 import mixins, { ExtractVue } from '../../util/mixins'
-
+import { AsyncComponentFactory } from 'vue/types/options'
 import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
 import EasyInteracts from '../../mixins/easyinteracts'
-
 import { CrudAction, CrudColumn, ApiMethod, CrudResource, CrudTableSettings, CrudUser } from 'types/services/crud'
-import { VToolbar } from '../VToolbar'
 import { VNode } from 'vue/types/umd'
-import { VBtn } from '../VBtn'
-import { VIcon } from '../VIcon'
-import { VDivider } from '../VDivider'
-import { VLabel } from '../VLabel'
-import { VSpacer, VCol } from '../VGrid'
-import { VTextField } from '../VTextField'
-import { VDialog } from '../VDialog'
-import { VCard, VCardActions, VCardText, VCardTitle } from '../VCard'
-import { VSelect } from '../VSelect'
-import { VCheckbox } from '../VCheckbox'
-
-import VCrudRelationsList from './VCrudRelationsList'
-import { VTab, VTabs, VTabsSlider } from '../VTabs'
-import VCrudApiForm from './VCrudApiForm'
 import { mergeDeep } from '../../util/helpers'
 import { SchemaRendererAgent } from 'types/services/schemas'
-import { VBtnToggle } from '../VBtnToggle'
+
+import VToolbar from '../VToolbar/VToolbar'
+import VBtn from '../VBtn/VBtn'
+import VIcon from '../VIcon/VIcon'
+import VDivider from '../VDivider/VDivider'
+import VLabel from '../VLabel/VLabel'
+import VSpacer from '../VGrid/VSpacer'
+import VCol from '../VGrid/VCol'
+import VTextField from '../VTextField/VTextField'
+import VDialog from '../VDialog/VDialog'
+import { VCard, VCardActions, VCardText, VCardTitle } from '../VCard'
+import VSelect from '../VSelect/VSelect'
+import VCheckbox from '../VCheckbox/VCheckbox'
+import VTab from '../VTabs/VTab'
+import VTabsSlider from '../VTabs/VTabsSlider'
+import VTabs from '../VTabs/VTabs'
+import VCrudRelationsList from './VCrudRelationsList'
+import VCrudApiForm from './VCrudApiForm'
+import VBtnToggle from '../VBtnToggle/VBtnToggle'
 
 const baseMixins = mixins(
   EasyInteracts,
@@ -93,6 +95,10 @@ export default baseMixins.extend<options>().extend({
     crudUser: {
       type: Object as PropType<CrudUser> | undefined,
       default: undefined,
+    },
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
+      default: () => ({}),
     },
     valueSettings: {
       type: Object as PropType<CrudTableSettings>,
@@ -264,6 +270,7 @@ export default baseMixins.extend<options>().extend({
             crud: this.crudResource,
             api: 'create',
             crudUser: this.crudUser,
+            componentsDictionary: this.componentsDictionary,
           },
         }
       )
@@ -275,6 +282,7 @@ export default baseMixins.extend<options>().extend({
           props: {
             crud: this.crudResource,
             crudUser: this.crudUser,
+            componentsDictionary: this.componentsDictionary,
             api: 'query',
             extraActions: [
               {
@@ -390,8 +398,8 @@ export default baseMixins.extend<options>().extend({
                   dense: true,
                 },
                 on: {
-                  change (e: any) {
-
+                  change: (e: any) => {
+                    this.$set(this.settingsFormValue, 'sortDesc', e)
                   },
                 },
               },
@@ -574,6 +582,14 @@ export default baseMixins.extend<options>().extend({
             api: this.currentExtendedActionName,
             isAction: true,
             crudUser: this.crudUser,
+            componentsDictionary: this.componentsDictionary,
+            extraBindings: [
+              {
+                name: 'selections',
+                type: 'default',
+                default: this.valueSelections,
+              },
+            ],
           },
         }
       )

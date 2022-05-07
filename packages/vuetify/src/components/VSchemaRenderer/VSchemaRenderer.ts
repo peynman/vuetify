@@ -2,12 +2,10 @@ import Vue, { VNode } from 'vue'
 import { AsyncComponentFactory, PropType } from 'vue/types/options'
 import { SchemaRendererComponent, EventActionType, EventActionDetails, SchemaRendererBinding } from 'types/services/schemas'
 import { cloneObjectWithParent, mergeDeep } from '../../util/helpers'
-// import * as AvailableEvents from '../VSchemaBuilder/properties/Events'
+import AvailableEvents from '../VSchemaBuilder/properties/Events'
 import { ScopedSlot } from 'vue/types/vnode'
 import { consoleError } from '../../util/console'
 import VSchemaBuilderAppend from '../VSchemaBuilder/VSchemaBuilderAppend'
-
-const AvailableEvents: any[] = []
 
 export default Vue.extend({
   name: 'v-schema-renderer',
@@ -32,6 +30,10 @@ export default Vue.extend({
       type: Boolean,
       default: false,
     },
+    previewMode: {
+      type: Boolean,
+      default: false,
+    },
     componentsDictionary: {
       type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
       default: () => ({}),
@@ -43,6 +45,10 @@ export default Vue.extend({
     bindingMergeDepth: {
       type: Number,
       default: 1,
+    },
+    preProcessor: {
+      type: Function,
+      default: undefined,
     },
     value: {
       type: Object as PropType<{ [key: string]: any }>,
@@ -299,7 +305,7 @@ export default Vue.extend({
         const propValue = entry[1]
 
         if (prop === 'on') {
-          const AvailableEventsRefs: EventActionDetails[] = Object.entries(AvailableEvents).map((avE: any) => avE[1].default)
+          const AvailableEventsRefs: EventActionDetails[] = Object.values(AvailableEvents)
           Object.entries(propValue).forEach((eventEntry: any[]) => {
             const eventName = eventEntry[0]
             const events = eventEntry[1]
@@ -311,7 +317,7 @@ export default Vue.extend({
                     avEvent: EventActionDetails) => (avEvent.name === event.action)
                   )
                   if (action != null) {
-                    action.onFireAction(this, clone, event, args, argsBindings)
+                    action.onFireAction(this, clone, event, args, [index, ...argsBindings])
                   }
                 })
               }
@@ -325,10 +331,10 @@ export default Vue.extend({
           Object.entries(propValue).forEach((propEntry: any[]) => {
             const propName = propEntry[0]
             const propItemValue = propEntry[1]
-            props[propName] = this.evalBinding(propItemValue, this.getBindingValues(), argsBindings)
+            props[propName] = this.evalBinding(propItemValue, this.getBindingValues(), [index, ...argsBindings])
           })
         } else {
-          clone[prop] = this.evalBinding(propValue, this.getBindingValues(), argsBindings)
+          clone[prop] = this.evalBinding(propValue, this.getBindingValues(), [index, ...argsBindings])
         }
       })
     },
@@ -351,6 +357,10 @@ export default Vue.extend({
 
       if (clone.hidden) {
         clone.show = false
+      }
+
+      if (this.preProcessor) {
+        return this.preProcessor(clone, this)
       }
 
       return clone
@@ -390,8 +400,12 @@ export default Vue.extend({
         (!desc['hide-sm'] || desc['hide-sm'] !== this.$vuetify.breakpoint.sm) &&
         (!desc['hide-xs'] || desc['hide-xs'] !== this.$vuetify.breakpoint.xs)
     },
-    genComponentChildren (desc: SchemaRendererComponent, argsBindings: any = null): VNode[] {
+    genComponentChildren (desc: SchemaRendererComponent, depth: number, argsBindings: any = null): VNode[] {
       const children: any[] = []
+
+      if (desc.contentBeforeChildren) {
+        children.push(desc.contentBeforeChildren)
+      }
 
       if (desc.children) {
         if (typeof desc.children === 'string') {
@@ -408,16 +422,20 @@ export default Vue.extend({
               } else if (typeof c.slotDetails === 'object') {
                 const detailedSlot: any = c.slotDetails
                 if (!detailedSlot.scoped && this.shouldRenderComponent(c)) {
-                  children.push(this.$createElement('template', { slot: detailedSlot.slot }, this.genComponent(c, argsBindings)))
+                  children.push(this.$createElement('template', { slot: detailedSlot.slot }, this.genComponent(c, depth + 1, argsBindings)))
                 }
               }
             })
         }
       }
 
+      if (desc.contentAfterChildren) {
+        children.push(desc.contentAfterChildren)
+      }
+
       return children
     },
-    genComponent (desc: SchemaRendererComponent, argsBindings: Array<any> = []): VNode[] {
+    genComponent (desc: SchemaRendererComponent, depth: number, argsBindings: Array<any> = []): VNode[] {
       let cloned: VNode[] = []
 
       if (desc['v-for']) {
@@ -427,13 +445,13 @@ export default Vue.extend({
             const vforArgsBindings = [vforBind, ...argsBindings]
             const cloneProps = this.genComponentPropsClone(desc, index, vforArgsBindings)
             const rootTag = this.genComponentTag(desc)
-            cloned.push(this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, vforArgsBindings)))
+            cloned.push(this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, depth, vforArgsBindings)))
           })
         }
       } else {
         const cloneProps = this.genComponentPropsClone(desc, null, argsBindings)
         const rootTag = this.genComponentTag(desc)
-        const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, argsBindings))
+        const clone = this.$createElement(rootTag, cloneProps, this.genComponentChildren(desc, depth, argsBindings))
         cloned.push(clone)
       }
 
@@ -449,7 +467,7 @@ export default Vue.extend({
       }
 
       if (this.editorMode) {
-        return [this.genEditableComponent(desc, cloned)]
+        return [this.genEditableComponent(desc, depth, cloned)]
       }
 
       return cloned
@@ -459,7 +477,7 @@ export default Vue.extend({
       const clone = this.$createElement(rootTag, {
         attrs: this.attributes,
         props: this.props,
-      }, this.genComponentChildren(this, []))
+      }, this.genComponentChildren(this, 0, []))
 
       if (this.wrap) {
         return this.$createElement(
@@ -474,7 +492,7 @@ export default Vue.extend({
 
       return clone
     },
-    genEditableComponent (desc: SchemaRendererComponent, cloned: VNode[]): VNode {
+    genEditableComponent (desc: SchemaRendererComponent, depth: number, cloned: VNode[]): VNode {
       return this.$createElement(
         'section',
         {
@@ -498,11 +516,24 @@ export default Vue.extend({
         },
         [
           this.$createElement(
+            'span',
+            {
+              staticStyle: {
+                position: 'absolute',
+                right: `${depth * 2}px`,
+                'z-index': 200,
+                border: 'solid 3px black',
+                'border-radius': '5px',
+              },
+            }
+          ),
+          this.$createElement(
             VSchemaBuilderAppend,
             {
               staticStyle: {
                 position: 'absolute',
-                'z-index': 1,
+                right: `${depth * 5}px`,
+                'z-index': 100,
                 display: desc.id && this.editableItems[desc.id] ? 'inline !important' : 'none !important',
               },
               props: {

@@ -128,6 +128,9 @@ export default {
     ok: 'OK',
     cancel: 'Cancel',
   },
+  timePickerInput: {
+    duration: '{0} hours and {1} minutes',
+  },
   jsonEditor: {
     addTitle: 'Add new item',
     itemTypeLabel: 'Item type',

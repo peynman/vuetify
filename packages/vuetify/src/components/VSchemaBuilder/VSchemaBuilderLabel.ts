@@ -1,8 +1,8 @@
 import Vue, { VNode } from 'vue'
 
-import VTextField from '../VTextField'
-import VBtn from '../VBtn'
-import VIcon from '../VIcon'
+import VTextField from '../VTextField/VTextField'
+import VBtn from '../VBtn/VBtn'
+import VIcon from '../VIcon/VIcon'
 
 export default Vue.extend({
   name: 'v-schema-builder-label',

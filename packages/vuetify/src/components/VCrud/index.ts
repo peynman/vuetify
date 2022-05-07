@@ -19,4 +19,17 @@ export {
   VCrudObjectPicker,
   VCrudApiForm,
 }
-export default VCrud
+
+export default {
+  $_vuetify_subcomponents: {
+    VCrud,
+    VCrudTable,
+    VCrudToolbar,
+    VCrudPagination,
+    VCrudRelationsList,
+    VCrudColumnTimestamp,
+    VCrudColumnDecoratable,
+    VCrudObjectPicker,
+    VCrudApiForm,
+  },
+}

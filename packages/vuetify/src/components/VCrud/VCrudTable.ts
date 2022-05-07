@@ -1,15 +1,18 @@
-import { PropType, VNode } from 'vue'
+import { VNode } from 'vue'
+import { AsyncComponentFactory, PropType } from 'vue/types/options'
+import { ApiMethod, CrudAction, CrudColumn, CrudTableSettings, CrudUser } from 'types/services/crud'
 import mixins, { ExtractVue } from '../../util/mixins'
-
 import Sizeable from '../../mixins/sizeable'
 import CrudConsumer from './CrudConsumer'
-import { VDataTable } from '../VDataTable'
-import { ApiMethod, CrudAction, CrudColumn, CrudTableSettings, CrudUser } from 'types/services/crud'
 import { DataTableHeader } from 'types'
-import VSchemaRenderer from '../VSchemaRenderer'
-import { VBtn } from '../VBtn'
-import { VIcon } from '../VIcon'
-import { VTooltip } from '../VTooltip'
+
+import VDataTable from '../VDataTable/VDataTable'
+import VSchemaRenderer from '../VSchemaRenderer/VSchemaRenderer'
+import VBtn from '../VBtn/VBtn'
+import VIcon from '../VIcon/VIcon'
+import VTooltip from '../VTooltip/VTooltip'
+import VCrudApiForm from '../VCrud/VCrudApiForm'
+import VDialog from '../VDialog/VDialog'
 
 type ScopedItem = {
   isMobile: boolean
@@ -20,6 +23,11 @@ type ScopedItem = {
 
 type SelectionChange = {
   item: any
+  value: boolean
+}
+
+type SelectAllToggle = {
+  items: any[]
   value: boolean
 }
 
@@ -70,6 +78,12 @@ export default baseMixins.extend<options>().extend({
     showQuickSearch: Boolean,
     hideEdit: Boolean,
     hideDelete: Boolean,
+    dialogProps: {
+      type: Object,
+      default: () => ({
+        maxWidth: 766,
+      }),
+    },
     tableSettings: {
       type: Object as PropType<CrudTableSettings> | undefined,
       default: undefined,
@@ -77,6 +91,10 @@ export default baseMixins.extend<options>().extend({
     crudUser: {
       type: Object as PropType<CrudUser> | undefined,
       default: undefined,
+    },
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: AsyncComponentFactory }>,
+      default: () => ({}),
     },
   },
 
@@ -127,7 +145,7 @@ export default baseMixins.extend<options>().extend({
       return item._class
     },
     getScopedColoumnActionButton (scopedItem: ScopedItem, act: CrudAction, ac: any) {
-      return this.$createElement(
+      const getActivator = (events: any) => this.$createElement(
         VBtn,
         {
           props: {
@@ -136,12 +154,13 @@ export default baseMixins.extend<options>().extend({
             loading: scopedItem.item['_' + act.name + '_loading'],
           },
           on: {
-            ...ac.on,
             click: (c: any) => {
               if (act.click) {
                 act.click(this, scopedItem.item, act)
               }
             },
+            ...ac.on,
+            ...events,
           },
         },
         [
@@ -156,6 +175,40 @@ export default baseMixins.extend<options>().extend({
           ),
         ]
       )
+
+      if (act.api?.form) {
+        return this.$createElement(
+          VDialog,
+          {
+            props: this.dialogProps ?? {},
+            scopedSlots: {
+              activator: (dialogAC: any) => {
+                return getActivator(dialogAC.on)
+              },
+            },
+          }, [
+            this.$createElement(
+              VCrudApiForm,
+              {
+                props: {
+                  crud: this.crudResource,
+                  api: act.name,
+                  isAction: true,
+                  crudUser: this.crudUser,
+                  extraBindings: [
+                    {
+                      name: 'item',
+                      type: 'default',
+                      default: scopedItem.item,
+                    },
+                  ],
+                },
+              }
+            ),
+          ])
+      }
+
+      return getActivator({})
     },
     updateScopedColumnsAndHeaders (headers: DataTableHeader[], scopedSlots: { [key: string]: any }) {
       this.crudResource?.columns?.forEach((col: CrudColumn) => {
@@ -186,6 +239,7 @@ export default baseMixins.extend<options>().extend({
                       default: col,
                     },
                   ],
+                  componentsDictionary: this.componentsDictionary,
                   children: [col.component],
                 },
               },
@@ -236,6 +290,7 @@ export default baseMixins.extend<options>().extend({
                                   default: act,
                                 },
                               ],
+                              componentsDictionary: this.componentsDictionary,
                               children: [act.component],
                             },
                           }
@@ -356,6 +411,22 @@ export default baseMixins.extend<options>().extend({
           itemClass: this.getItemClass,
         },
         on: {
+          'toggle-select-all': (selection: SelectAllToggle) => {
+            if (selection.value) {
+              selection.items.forEach((item: any) => {
+                if (!this.selectedItems.includes(item)) {
+                  this.selectedItems.push(item)
+                }
+              })
+            } else {
+              selection.items.forEach((item: any) => {
+                const index = this.selectedItems.indexOf(item)
+                if (index >= 0) {
+                  this.selectedItems.splice(index, 1)
+                }
+              })
+            }
+          },
           'item-selected': (selection: SelectionChange) => {
             if (!this.selectedItems.includes(selection.item) && selection.value) {
               this.selectedItems.push(selection.item)

@@ -1,17 +1,17 @@
 import mixins, { ExtractVue } from '../../util/mixins'
-
-import { CrudColumn, CrudResource } from 'types/services/crud'
-
-import { VTreeview } from '../VTreeview'
-import { VCol, VRow } from '../VGrid'
-import { VLabel } from '../VLabel'
-import CrudConsumer from './CrudConsumer'
 import { VNode } from 'vue/types/umd'
+import { CrudColumn, CrudResource } from 'types/services/crud'
 import { makeRandomId } from '../../util/helpers'
-import { VCheckbox } from '../VCheckbox'
+
+import VTreeview from '../VTreeview/VTreeview'
+import VCol from '../VGrid/VCol'
+import VRow from '../VGrid/VRow'
+import VLabel from '../VLabel/VLabel'
+import CrudConsumer from './CrudConsumer'
+import VCheckbox from '../VCheckbox/VCheckbox'
 import { VList, VListItem, VListItemContent, VListItemTitle, VListItemGroup } from '../VList'
-import { VMenu } from '../VMenu'
-import { VChip } from '../VChip'
+import VMenu from '../VMenu/VMenu'
+import VChip from '../VChip/VChip'
 
 type TreeViewItem = {
   id: string
