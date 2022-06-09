@@ -346,14 +346,17 @@ export default baseMixins.extend<options>().extend({
       }
 
       extras.push(
-        this.genMenu('mdi-toy-brick-remove', 'red', 'Remove item #' + this.item.id + '?', this.genRemoveItemMenuContent(() => {
-          this.$emit('remove-item', this.item)
-        }), null, {}, {
-          'x-small': true,
-          iconProps: {
+        this.genMenu(
+          'mdi-toy-brick-remove',
+          'red', this.$vuetify.lang.t('$vuetify.schemaBuilder.removeWarning', this.item.id ?? 0),
+          this.genRemoveItemMenuContent(() => {
+            this.$emit('remove-item', this.item)
+          }), null, {}, {
             'x-small': true,
-          },
-        })
+            iconProps: {
+              'x-small': true,
+            },
+          })
       )
     } else {
       extras.push(
@@ -398,32 +401,32 @@ export default baseMixins.extend<options>().extend({
               color: 'secondary',
             },
           }, this.item.tag),
-          this.genIconDialog('mdi-cog', 'primary', '#' + this.item.id + ' Settings', [
-            h(VSchemaBuilderItemProperties, {
-              props: {
-                item: cloneObjectWithParentRemove(this.item),
-                properties: this.item.tag ? this.typesDictionary[this.item.tag] : {},
-                customPropertyResolver: this.customPropertyResolver,
-              },
-              on: {
-                'change-props': (e: any) => {
-                  this.$emit('change-props', this.item, e)
-                },
-                'change-events': (e: any) => {
-                  this.$emit('change-events', this.item, e)
-                },
-                'change-attributes': (e: any) => {
-                  this.$emit('change-attributes', this.item, e)
-                },
-              },
-            }),
-          ], (e: any) => {
-          }, {
-            'x-small': true,
-            iconProps: {
-              'x-small': true,
-            },
-          }),
+          // this.genIconDialog('mdi-cog', 'primary', '#' + this.item.id + ' Settings', [
+          //   h(VSchemaBuilderItemProperties, {
+          //     props: {
+          //       item: cloneObjectWithParentRemove(this.item),
+          //       properties: this.item.tag ? this.typesDictionary[this.item.tag] : {},
+          //       customPropertyResolver: this.customPropertyResolver,
+          //     },
+          //     on: {
+          //       'change-props': (e: any) => {
+          //         this.$emit('change-props', this.item, e)
+          //       },
+          //       'change-events': (e: any) => {
+          //         this.$emit('change-events', this.item, e)
+          //       },
+          //       'change-attributes': (e: any) => {
+          //         this.$emit('change-attributes', this.item, e)
+          //       },
+          //     },
+          //   }),
+          // ], (e: any) => {
+          // }, {
+          //   'x-small': true,
+          //   iconProps: {
+          //     'x-small': true,
+          //   },
+          // }),
           ...extras,
         ]),
       ]

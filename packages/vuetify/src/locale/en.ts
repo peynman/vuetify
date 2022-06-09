@@ -120,6 +120,8 @@ export default {
     preview: 'Preview',
     code: 'Code view',
     editorMode: 'Toggle editor mode in preview',
+    removeWarning: 'Remove item #{0}?',
+    settingsTitle: 'Item #{0} settings',
   },
   datePickerInput: {
     input: 'From {0} to {1}',

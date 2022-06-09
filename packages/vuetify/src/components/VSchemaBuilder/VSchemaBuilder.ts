@@ -8,12 +8,16 @@ import VSpacer from '../VGrid/VSpacer'
 import VDivider from '../VDivider/VDivider'
 import VToolbar from '../VToolbar/VToolbar'
 import VTreeview from '../VTreeview/VTreeview'
+import { VList, VListItem, VListItemTitle, VListItemSubtitle, VListItemContent, VListItemGroup, VListItemIcon } from '../VList'
+import VAutocomplete from '../VAutocomplete/VAutocomplete'
+import VTextField from '../VTextField/VTextField'
+import VChip from '../VChip/VChip'
 
 import VSchemaRenderer from '../VSchemaRenderer/VSchemaRenderer'
 import VSchemaBuilderLabel from './VSchemaBuilderLabel'
-import VSchemaBuilderAppend from './VSchemaBuilderAppend'
+import VSchemaBuilderItemProperties from './properties/VSchemaBuilderItemProperties'
 
-import { CustomPropertyResolver, SchemaRendererComponent } from 'types/services/schemas'
+import { CustomPropertyResolver, SchemaRendererComponent, TagSettings, SelectableItem, TagSlot } from 'types/services/schemas'
 
 import { cloneObjectWithCallbackOnKey, cloneObjectWithParentCalculate, cloneObjectWithParentRemove, makeRandomId } from '../../util/helpers'
 import { consoleError } from '../../util/console'
@@ -54,9 +58,9 @@ export default baseMixins.extend<options>().extend({
         },
       } as SchemaRendererComponent),
     },
-    extraTypes: {
-      type: Array,
-      default: () => ([]),
+    componentsDictionary: {
+      type: Object as PropType<{ [key: string]: TagSettings }>,
+      default: () => ({}),
     },
     rendererPreProcessor: {
       type: Function,
@@ -82,6 +86,7 @@ export default baseMixins.extend<options>().extend({
       editablePreview: false,
       rootChild: schema,
       autoReactive: true,
+      addBlockItems: [] as Array<string>,
     }
   },
 
@@ -98,6 +103,12 @@ export default baseMixins.extend<options>().extend({
           return id + '_' + makeRandomId(5)
         }
       }
+    },
+    typeNamesArrayList (): SelectableItem[] {
+      return Object.keys(this.componentsDictionary).map((key: string) => ({
+        name: key,
+        text: this.componentsDictionary[key].name,
+      }))
     },
   },
 
@@ -290,7 +301,7 @@ export default baseMixins.extend<options>().extend({
                   const json = JSON.parse(fileHandler.result)
                   this.rootChild = cloneObjectWithParentCalculate(json, null)
                   this.$emit('input', this.generatedSchema)
-                } catch (e) {
+                } catch (e: any) {
                   consoleError(e)
                 }
               }
@@ -301,6 +312,367 @@ export default baseMixins.extend<options>().extend({
         false
       )
       downloadAnchorNode.remove()
+    },
+    genAddBlockDialogContent (item: SchemaRendererComponent): VNode[] {
+      return [
+        this.$createElement(
+          VAutocomplete,
+          {
+            staticClass: 'mx-1 my-auto',
+            props: {
+              color: 'secondary',
+              'x-small': true,
+              block: false,
+              outlined: true,
+              items: this.typeNamesArrayList,
+              chips: true,
+              multiple: true,
+              dense: true,
+              'hide-details': true,
+              autofocus: true,
+              value: [],
+            },
+            on: {
+              input: (e: Array<string>) => {
+                this.addBlockItems = e
+              },
+            },
+          }
+        ),
+        this.genIconButton(
+          'mdi-plus-box',
+          'success',
+          () => {
+            this.onAddChild(item, this.addBlockItems)
+          },
+          {
+            'x-small': false,
+            dense: true,
+            iconProps: {
+              'x-small': false,
+            },
+          }
+        ),
+      ]
+    },
+    genChangeSlotMenuContent (item: SchemaRendererComponent): VNode {
+      const parentTag = item.parent?.tag ?? ''
+      // rendering list of av slot names
+      const avSlotsList = this.componentsDictionary?.[parentTag]?.slots?.map((slot: TagSlot) => {
+        const slotDetails = [
+          this.$createElement(VListItemContent, {}, [
+            this.$createElement(VListItemTitle, {}, [slot.name]),
+            this.$createElement(VListItemSubtitle, {}, [slot.description]),
+          ]),
+        ]
+
+        if (slot.name.includes('<name>')) {
+          let namedSlotValue = ''
+          if (typeof item.slot === 'object') {
+            const namedDetails = item.slot as any
+            if (slot.name === namedDetails.slot) {
+              namedSlotValue = namedDetails.name
+            }
+          }
+          slotDetails.push(
+            this.$createElement(VTextField,
+              {
+                props: {
+                  dense: true,
+                  label: 'Slot name',
+                  'hide-details': true,
+                  value: namedSlotValue,
+                },
+                on: {
+                  change: (name: any) => {
+                    this.onChangeSlots(item, { slot: slot.name, name, scoped: true })
+                  },
+                },
+              }
+            )
+          )
+        }
+
+        return this.$createElement(VListItem, {
+          props: {
+            value: slot.name,
+          },
+          on: {
+            click: (e: MouseEvent) => {
+              this.onChangeSlots(item, { slot: slot.name, name, scoped: slot.vueProperties !== undefined })
+            },
+          },
+        }, slotDetails)
+      })
+
+      let slotNameValue = item.slot
+      if (typeof item.slot === 'object') {
+        const namedDetails = item.slot as any
+        slotNameValue = namedDetails.slot
+      }
+
+      return this.$createElement(VList, {
+        props: {
+          dense: true,
+          'two-line': true,
+        },
+      }, [
+        this.$createElement(VListItemGroup, {
+          props: {
+            value: slotNameValue,
+          },
+        }, avSlotsList),
+      ])
+    },
+    genItemMenuToFuncCallback (item: SchemaRendererComponent) {
+      return (move: any) => {
+        return this.$createElement(VListItem, {
+          props: {
+            value: move.id,
+          },
+          on: {
+            click: (e: MouseEvent) => {
+              move.func(item)
+            },
+          },
+        }, [
+          this.$createElement(VListItemIcon, {}, [
+            this.$createElement(VIcon, {}, move.icon),
+          ]),
+          this.$createElement(VListItemContent, {}, [
+            this.$createElement(VListItemTitle, {}, [move.title]),
+          ]),
+        ])
+      }
+    },
+    genItemMoveMenuContent (item: SchemaRendererComponent): VNode {
+      const avMoves = [
+        {
+          id: 0,
+          name: 'first',
+          title: 'Move first',
+          icon: 'mdi-chevron-double-up',
+          func: this.onMoveFirst,
+        },
+        {
+          id: 1,
+          name: 'up',
+          title: 'Move up',
+          icon: 'mdi-chevron-up',
+          func: this.onMoveUp,
+        },
+        {
+          id: 2,
+          name: 'down',
+          title: 'Move down',
+          icon: 'mdi-chevron-down',
+          func: this.onMoveDown,
+        },
+        {
+          id: 3,
+          name: 'last',
+          title: 'Move last',
+          icon: 'mdi-chevron-double-down',
+          func: this.onMoveLast,
+        },
+      ].map(this.genItemMenuToFuncCallback(item))
+
+      return this.$createElement(VList, {
+        props: {
+          dense: true,
+        },
+      }, [
+        this.$createElement(VListItemGroup, {
+          props: {
+          },
+        }, avMoves),
+      ])
+    },
+    genItemPasteMenuContent (item: SchemaRendererComponent): VNode {
+      const avMoves = [
+        {
+          id: 0,
+          name: 'sibling',
+          title: 'Paste as sibling',
+          icon: 'mdi-source-pull',
+          func: this.onPasteItemAsSibling,
+        },
+        {
+          id: 1,
+          name: 'child',
+          title: 'Paste as child',
+          icon: 'mdi-source-merge',
+          func: this.onPasteItemAsChild,
+        },
+      ].map(this.genItemMenuToFuncCallback(item))
+      return this.$createElement(VList, {
+        props: {
+          dense: true,
+        },
+      }, [
+        this.$createElement(VListItemGroup, {
+          props: {
+          },
+        }, avMoves),
+      ])
+    },
+    genItemTreeviewTools (item: SchemaRendererComponent): VNode[] {
+      const extras: VNode[] = [
+        this.genIconDialog(
+          'mdi-cog',
+          'primary',
+          this.$vuetify.lang.t('$vuetify.schemaBuilder.settingsTitle', item.id ?? 0),
+          [
+            this.$createElement(VSchemaBuilderItemProperties, {
+              props: {
+                item: cloneObjectWithParentRemove(item),
+                properties: this.componentsDictionary[item.tag ?? ''],
+                customPropertyResolver: this.customPropertyResolver,
+              },
+              on: {
+                'change-props': (e: any) => {
+                  this.onChangeProps(item, e)
+                },
+                'change-events': (e: any) => {
+                  this.onChangeEvents(item, e)
+                },
+                'change-attributes': (e: any) => {
+                  this.onChangeAttributes(item, e)
+                },
+              },
+            }),
+          ],
+          null,
+          {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          }
+        ),
+      ]
+      let canAddBlocks = false
+      const isRoot = item.parent === null || item.parent === undefined
+      const dictionaryType = this.componentsDictionary[item.tag ?? '']
+      if (dictionaryType?.slots && dictionaryType.slots?.length > 0) {
+        canAddBlocks = true
+      }
+      if (item.tag === 'VSchemaRenderer') {
+        canAddBlocks = true
+      }
+
+      if (!isRoot) {
+        extras.push(
+          this.genIconButton('mdi-content-copy', 'primary', (e: any) => {
+            this.onCopyItem(item)
+          }, {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          })
+        )
+        extras.push(
+          this.genMenu('mdi-content-paste', 'warning', 'Paste', [this.genItemPasteMenuContent(item)], null, {
+            'close-on-content-click': false,
+          }, {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          })
+        )
+        extras.push(
+          this.genMenu('mdi-arrow-up-down', 'primary', 'Move #' + item.id, [this.genItemMoveMenuContent(item)], null, {
+            'close-on-content-click': false,
+          }, {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          })
+        )
+        if (item.parent?.tag) {
+          const dictionaryParentType = this.componentsDictionary?.[item.parent?.tag ?? '']
+          if (dictionaryParentType?.slots && dictionaryParentType.slots?.length > 0) {
+            extras.push(this.genMenu('mdi-toy-brick-marker', 'secondary', 'Select component slot', [
+              this.genChangeSlotMenuContent(item),
+            ], null, {
+              'close-on-content-click': false,
+            }, {
+              'x-small': true,
+              iconProps: {
+                'x-small': true,
+              },
+            }))
+          }
+        }
+
+        extras.push(
+          this.genMenu(
+            'mdi-toy-brick-remove',
+            'red', this.$vuetify.lang.t('$vuetify.schemaBuilder.removeWarning', item.id ?? 0),
+            this.genRemoveItemMenuContent(() => {
+              this.onRemoveItem(item)
+            }), null, {}, {
+              'x-small': true,
+              iconProps: {
+                'x-small': true,
+              },
+            })
+        )
+      } else {
+        extras.push(
+          this.genIconButton('mdi-content-paste', 'warning', (e: any) => {
+            this.onPasteItemAsChild(item)
+          }, {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          })
+        )
+      }
+
+      if (canAddBlocks) {
+        extras.push(
+          this.genIconDialog('mdi-toy-brick-plus', 'success', 'Add new block', this.genAddBlockDialogContent(item), null, {
+            'x-small': true,
+            iconProps: {
+              'x-small': true,
+            },
+          })
+        )
+      }
+
+      return extras
+    },
+    genItemSettingsNode (item: SchemaRendererComponent): VNode {
+      return this.$createElement(
+        'div',
+        {
+          staticClass: 'd-flex flex-row justify-end',
+        },
+        [
+          this.$createElement(VChip, {
+            staticClass: '',
+            props: {
+              dense: true,
+              small: true,
+            },
+          },
+          [
+            this.$createElement(VChip, {
+              staticClass: '',
+              props: {
+                dense: true,
+                'x-small': true,
+                color: 'secondary',
+              },
+            }, item.tag),
+            ...this.genItemTreeviewTools(item),
+          ])],
+      )
     },
     genRoot (): VNode {
       const children = [
@@ -398,22 +770,7 @@ export default baseMixins.extend<options>().extend({
           this.$createElement(
             VSpacer
           ),
-          this.$createElement(
-            VSchemaBuilderAppend,
-            {
-              props: {
-                item: this.rootChild,
-                extraTypes: this.extraTypes,
-                customPropertyResolver: this.customPropertyResolver,
-              },
-              on: {
-                'change-props': this.onChangeProps,
-                'change-attributes': this.onChangeAttributes,
-                'change-events': this.onChangeEvents,
-                'add-child': this.onAddChild,
-              },
-            }
-          ),
+          this.genItemSettingsNode(this.rootChild),
           this.$createElement(
             VDivider,
             {
@@ -505,44 +862,34 @@ export default baseMixins.extend<options>().extend({
           scopedSlots: {
             label: e => {
               return [
-                this.$createElement(VSchemaBuilderLabel, {
-                  staticClass: 'ma-auto',
-                  props: {
-                    label: e.item?.id,
-                    type: e.item?.tag,
-                  },
-                  on: {
-                    'change-label': (newLabel: string) => {
-                      e.item.id = newLabel
-                      if (this.autoReactive) {
-                        e.item['v-model'] = `$(bindings.${newLabel})`
-                      }
+                this.$createElement(
+                  VSchemaBuilderLabel,
+                  {
+                    staticClass: 'ma-auto',
+                    props: {
+                      label: e.item?.id,
+                      type: e.item?.tag,
+                    },
+                    on: {
+                      'change-label': (newLabel: string) => {
+                        this.$set(e.item, 'id', newLabel)
+                        if (this.autoReactive) {
+                          this.$set(e.item, 'v-model', `$(bindings.${newLabel})`)
+                        }
+                      },
+                    },
+                  }),
+                this.$createElement(
+                  'div',
+                  {
+                    style: {
+                      position: 'absolute',
+                      bottom: '-6px',
+                      [this.$vuetify.rtl ? 'left' : 'right']: '30px',
                     },
                   },
-                }),
-                this.$createElement(VSchemaBuilderAppend, {
-                  staticClass: 'mt-n4 me-3',
-                  props: {
-                    item: e.item,
-                    extraTypes: this.extraTypes,
-                    customPropertyResolver: this.customPropertyResolver,
-                  },
-                  on: {
-                    'move-first': this.onMoveFirst,
-                    'move-last': this.onMoveLast,
-                    'move-up': this.onMoveUp,
-                    'move-down': this.onMoveDown,
-                    'change-props': this.onChangeProps,
-                    'change-attributes': this.onChangeAttributes,
-                    'change-events': this.onChangeEvents,
-                    'change-slots': this.onChangeSlots,
-                    'add-child': this.onAddChild,
-                    'remove-item': this.onRemoveItem,
-                    'copy-item': this.onCopyItem,
-                    'paste-siblint': this.onPasteItemAsSibling,
-                    'paste-child': this.onPasteItemAsChild,
-                  },
-                }),
+                  [this.genItemSettingsNode(e.item)],
+                ),
               ]
             },
           },
@@ -565,10 +912,13 @@ export default baseMixins.extend<options>().extend({
             editorMode: this.editablePreview,
             previewMode: true,
             loaderMode: this.loaderMode,
-            componentsDictionary: this.extraTypes?.filter((type: any) => (type.factory)).reduce((factory: any, type: any) => {
-              factory[type.name] = type.factory
-              return factory
-            }, {}),
+            componentsDictionary:
+              Object.keys(this.componentsDictionary ?? {})
+                .filter((key: string) => (this.componentsDictionary[key].factory))
+                .reduce((factory: any, type: any) => {
+                  factory[type.name] = type.factory
+                  return factory
+                }, {}),
             preProcessor: this.rendererPreProcessor,
           },
           on: {

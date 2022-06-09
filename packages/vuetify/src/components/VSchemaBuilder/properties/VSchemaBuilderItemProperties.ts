@@ -10,6 +10,7 @@ import VSchemaRendererBinding from './VSchemaRendererBinding'
 import { consoleWarn } from '../../../util/console'
 
 import AvailableEvents from './Events'
+import { mergeDeep } from '../../../util//helpers'
 
 export default Vue.extend({
   name: 'v-schema-builder-item-properties',
@@ -72,12 +73,7 @@ export default Vue.extend({
       return this.properties?.events ?? []
     },
     AvailableItemProperties (): any[] {
-      const props = this.properties?.attributes
-      if (props) {
-        return props.sort((a: any, b: any) => a.name.localeCompare(b.name))
-      }
-
-      return []
+      return this.properties?.attributes?.slice().sort((a: any, b: any) => a.name.localeCompare(b.name)) ?? []
     },
   },
 
@@ -87,8 +83,8 @@ export default Vue.extend({
         VSchemaBuilderItemProperty,
         {
           props: {
-            item: this.item,
-            attribute: prop,
+            item: mergeDeep({}, this.item),
+            attribute: mergeDeep({}, prop),
             value: this.itemProps[prop.name],
             customInputComponent: this.customPropertyResolver?.(this.item, prop),
           },

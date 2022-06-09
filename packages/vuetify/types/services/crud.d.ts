@@ -74,6 +74,7 @@ export interface CrudColumn {
   title: string
   sortable: boolean
   artificial?: Boolean
+  hideInTable?: Boolean
   component: SchemaRendererComponent
 }
 

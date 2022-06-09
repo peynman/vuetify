@@ -90,6 +90,7 @@ export interface TagSettings {
   attributes?: TagAttribute[]
   events?: TagEvent[]
   slots?: TagSlot[]
+  factory?: AsyncComponentFactory
 }
 
 export interface SelectableItem {

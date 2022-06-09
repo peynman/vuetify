@@ -42,11 +42,7 @@ export default Vue.extend({
     wrapClass: String,
     wrapAttributes: Array,
     attributes: Object,
-    bindingMergeDepth: {
-      type: Number,
-      default: 1,
-    },
-    preProcessor: {
+    preProcessComponentCallback: {
       type: Function,
       default: undefined,
     },
@@ -359,8 +355,8 @@ export default Vue.extend({
         clone.show = false
       }
 
-      if (this.preProcessor) {
-        return this.preProcessor(clone, this)
+      if (this.preProcessComponentCallback) {
+        return this.preProcessComponentCallback(clone, this)
       }
 
       return clone

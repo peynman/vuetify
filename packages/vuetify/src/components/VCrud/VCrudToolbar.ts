@@ -590,6 +590,7 @@ export default baseMixins.extend<options>().extend({
                 default: this.valueSelections,
               },
             ],
+            value: {}, // pas an empty value to reset
           },
         }
       )

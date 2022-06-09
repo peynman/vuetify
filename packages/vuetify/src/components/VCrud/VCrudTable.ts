@@ -212,7 +212,7 @@ export default baseMixins.extend<options>().extend({
     },
     updateScopedColumnsAndHeaders (headers: DataTableHeader[], scopedSlots: { [key: string]: any }) {
       this.crudResource?.columns?.forEach((col: CrudColumn) => {
-        if (this.tableSettings?.hideColumns?.includes(col.name)) {
+        if (this.tableSettings?.hideColumns?.includes(col.name) || col.hideInTable) {
           return
         }
 
