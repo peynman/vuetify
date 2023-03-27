@@ -120,6 +120,8 @@ export default {
     preview: 'پیش‌نمایش',
     code: 'نمایش کد',
     editorMode: 'Toggle editor mode in preview',
+    removeWarning: 'Remove item #{0}?',
+    settingsTitle: 'Item #{0} settings',
   },
   datePickerInput: {
     input: 'از {0} تا {1}',

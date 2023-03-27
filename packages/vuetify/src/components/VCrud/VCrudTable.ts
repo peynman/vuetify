@@ -144,7 +144,7 @@ export default baseMixins.extend<options>().extend({
     getItemClass (item: any) {
       return item._class
     },
-    getScopedColoumnActionButton (scopedItem: ScopedItem, act: CrudAction, ac: any) {
+    getScopedColumnActionButton (scopedItem: ScopedItem, act: CrudAction, ac: any) {
       const getActivator = (events: any) => this.$createElement(
         VBtn,
         {
@@ -193,6 +193,7 @@ export default baseMixins.extend<options>().extend({
                 props: {
                   crud: this.crudResource,
                   api: act.name,
+                  title: typeof act.title === 'function' ? act.title(this, this.crudResource) : act.title,
                   isAction: true,
                   crudUser: this.crudUser,
                   extraBindings: [
@@ -296,7 +297,7 @@ export default baseMixins.extend<options>().extend({
                           }
                         )
                       } else {
-                        return this.getScopedColoumnActionButton(scopedItem, act, ac)
+                        return this.getScopedColumnActionButton(scopedItem, act, ac)
                       }
                     },
                   },
@@ -426,6 +427,7 @@ export default baseMixins.extend<options>().extend({
                 }
               })
             }
+            this.$emit('update-selections', this.crudResource, this.selectedItems)
           },
           'item-selected': (selection: SelectionChange) => {
             if (!this.selectedItems.includes(selection.item) && selection.value) {
